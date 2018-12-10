@@ -27,6 +27,7 @@ class Enemy{
 		this.speed = 2;
 		this.hp = 100;
 		this.maxHp = this.hp;
+		this.id = Math.random() * Math.random();
 	}
 	move(towards,obstacles){
 		if(this.x < towards.x){
@@ -50,11 +51,13 @@ class Enemy{
 class Scene{
 	constructor(youX,youY,width,height,settings){
 		this.settings = settings;
+		this.width = width;
+		this.height = height;
 		this.bullets = [];
 		this.obstacles = [];
 		this.enemies = [];
-		this.obstacles.push(new Obstacle(10,10,200,200));
-		this.obstacles.push(new Obstacle(10,230,700,20));
+		this.obstacles.push(new Obstacle(20,20,200,200));
+		this.obstacles.push(new Obstacle(20,240,700,20));
 		this.enemies.push(new Enemy(10,10,20,20));	
 		this.keys = [];
 		this.time = 0;
@@ -78,12 +81,24 @@ class Scene{
 		this.checkBounds();
 	}
 	bulletCollide(){
-		this.bullets.forEach(bullet=>{
-			this.enemies.forEach(enemy=>{
+		this.bullets = this.bullets.filter(bullet=>{
+			this.enemies = this.enemies.filter(enemy=>{
 				if(this.collide(bullet,enemy)){
-					enemy.hp -= bullet.damage;
+					console.log(!bullet.hits.includes(enemy.id),bullet.pierce)
+					if(!bullet.hits.includes(enemy.id) && bullet.pierce > 0){
+						enemy.hp -= bullet.damage;
+						bullet.hits.push(enemy.id);
+						bullet.pierce--;
+					}
+					console.log(enemy.hp)
+					if(enemy.hp <= 0)
+						return false;
 				}
+				return true;
 			});
+			if(bullet.pierce <= 0)
+				return false;
+			return true;
 		});
 	}
 	checkBounds(){
@@ -92,6 +107,17 @@ class Scene{
 				this.backOffCollide(obs,this.you);
 			}
 		});
+		this.bullets = this.bullets.filter(bullet=>{
+			return !(bullet.x + bullet.width < 0 ||
+				bullet.x > this.width ||
+				bullet.y + bullet.height < 0 ||
+				bullet.y > this.height);
+		});
+		if(this.you.x < 0) this.you.x = 0;
+		if(this.you.x + this.you.width > this.width) this.you.x = this.width - this.you.width;
+		if(this.you.y < 0) this.you.y = 0;
+		if(this.you.y + this.you.height > this.height) this.you.y = this.height - this.you.height;
+			
 	}
 	collide(o1,o2){
 		return o1.x < o2.x + o2.width && o1.x + o1.width > o2.x && o1.y < o2.y + o2.height && o1.y + o1.height > o2.y;
@@ -147,8 +173,14 @@ class Scene{
 	render(){
 		let you = this.you;
 		ctx.clearRect(0,0,canvas.width,canvas.height);
-		ctx.fillStyle = 'blue';
+		ctx.fillStyle = 'black';
 		ctx.fillRect(0,0,canvas.width,canvas.height);
+
+		ctx.fillStyle = 'blue';
+		let adjusted = this.cameraOffset({x:0,y:0,width:this.width,height:this.height});
+		console.log(adjusted);
+		ctx.fillRect(adjusted.x,adjusted.y,this.width,this.height);
+
 		ctx.fillStyle = 'green';
 		ctx.fillRect(canvas.width/2,canvas.height/2,you.width,you.height);
 		ctx.fillStyle = 'black';
@@ -193,12 +225,13 @@ class Weapon{
 		this.fireDelay = fireDelay;
 		this.timeout = 0;
 		this.damage = 10;
+		this.pierce = 2;
 	} 
 	shoot(you,x,y){
 		if(this.timeout > game.scene.time)
 			return;
 		for(let i = -this.spread/2;i<this.spread/2;i+=this.spread/this.flechettes){
-			let bullet = new Bullet(you.getCenter().x,you.getCenter().y,this.speed,this.damage);
+			let bullet = new Bullet(you.getCenter().x,you.getCenter().y,this.speed,this.damage,this.pierce);
 			bullet.setDirection(x,y,x > 0, y > 0,i);
 			game.scene.bullets.push(bullet);
 		}
@@ -213,7 +246,7 @@ class You{
 		this.speed = 4;
 		this.width = 20;
 		this.height = 20;
-		this.weapon = new Weapon(15,Math.PI/4,5,2,10);
+		this.weapon = new Weapon(15,Math.PI/8,5,2,10);
 		this.shooting = false;
 	}
 	getCenter(){
@@ -239,7 +272,8 @@ class Bullet {
 		this.height = 5;
 		this.speed = speed;
 		this.damage = damage;
-		this.pierece = pierce;
+		this.pierce = pierce;
+		this.hits = [];
 	}
 	setDirection(x,y,xSign,ySign,spread){
 		let theta = Math.atan(Math.abs(y)/Math.abs(x));
