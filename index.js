@@ -56,6 +56,7 @@ class Scene{
 		this.bullets = [];
 		this.obstacles = [];
 		this.enemies = [];
+		this.faders = [];
 		this.obstacles.push(new Obstacle(20,20,200,200));
 		this.obstacles.push(new Obstacle(20,240,700,20));
 		this.enemies.push(new Enemy(10,10,20,20));	
@@ -69,6 +70,7 @@ class Scene{
 	}
 	update(){
 		this.time++;
+		this.fadeFaders();
 		this.you.shoot();
 		this.bullets.forEach(bullet=>{
 			bullet.move();
@@ -80,12 +82,19 @@ class Scene{
 		this.handleInput();
 		this.checkBounds();
 	}
+	fadeFaders(){
+		this.faders = this.faders.filter(fader=>{
+			fader.fade();
+			return fader.alive();
+		});
+	}
 	bulletCollide(){
 		this.bullets = this.bullets.filter(bullet=>{
 			this.enemies = this.enemies.filter(enemy=>{
 				if(this.collide(bullet,enemy)){
 					if(!bullet.hits.includes(enemy.id) && bullet.pierce > 0){
 						enemy.hp -= bullet.damage;
+						this.faders.push(new HitText(bullet.x,bullet.y,`-${bullet.damage}`));
 						bullet.hits.push(enemy.id);
 						bullet.pierce--;
 					}
@@ -186,10 +195,10 @@ class Scene{
 
 		/*Draw you*/
 		ctx.save();
-		//ctx.translate(canvas.width/2,canvas.height/2);
-		//ctx.rotate(you.theta);
+		ctx.translate(canvas.width/2 + (you.width/2),canvas.height/2 + (you.height/2));
+		ctx.rotate(you.angle);
 		ctx.fillStyle = 'green';
-		ctx.fillRect(canvas.width/2,canvas.height/2,you.width,you.height);
+		ctx.fillRect(you.width/-2,you.height/-2,you.width,you.height);
 		ctx.restore();
 
 		ctx.fillStyle = 'black';
@@ -212,6 +221,14 @@ class Scene{
 				ctx.fillRect(adjusted.x,adjusted.y + enemy.height + 5,enemy.width * enemy.hp/enemy.maxHp,5);
 			}
 		});
+		ctx.fillStyle = 'black'; 
+		this.faders.forEach((fader)=>{
+			ctx.globalAlpha = fader.opacity;
+			let adjusted = this.cameraOffset(fader);
+			ctx.fillText(fader.text,adjusted.x,adjusted.y+10);
+
+		});
+		ctx.globalAlpha = 1;
 
 	}
 }
@@ -222,7 +239,21 @@ class Obstacle{
 		this.y = y;
 		this.width = width;
 		this.height = height;
-		this.bulletStopping
+	}
+}
+
+class HitText{
+	constructor(x,y,text){
+		this.opacity = 1;
+		this.x = x;
+		this.y = y;
+		this.text = text;
+	}
+	fade(){
+		this.opacity -= (1/70);	
+	}
+	alive(){
+		return this.opacity > 0;
 	}
 }
 
@@ -319,7 +350,6 @@ canvas.addEventListener('mousedown',(e)=>{
 	you.aimX = e.offsetX - canvas.width/2;
 	you.aimY = e.offsetY - canvas.height/2;
 	you.shooting = true;
-	//you.weapon.shoot(you,x,y);
 });
 canvas.addEventListener('mouseup',(e)=>{
 	game.scene.you.shooting = false;
