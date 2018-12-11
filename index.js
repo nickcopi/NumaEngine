@@ -84,17 +84,21 @@ class Scene{
 		this.bullets = this.bullets.filter(bullet=>{
 			this.enemies = this.enemies.filter(enemy=>{
 				if(this.collide(bullet,enemy)){
-					console.log(!bullet.hits.includes(enemy.id),bullet.pierce)
 					if(!bullet.hits.includes(enemy.id) && bullet.pierce > 0){
 						enemy.hp -= bullet.damage;
 						bullet.hits.push(enemy.id);
 						bullet.pierce--;
 					}
-					console.log(enemy.hp)
 					if(enemy.hp <= 0)
 						return false;
 				}
 				return true;
+			});
+			this.obstacles.forEach(obs=>{
+				if(this.collide(bullet,obs)){
+					if(!obs.allowBullets) bullet.pierce = 0;
+					//bullet.setAngle(bullet.angle + Math.PI/2);
+				}
 			});
 			if(bullet.pierce <= 0)
 				return false;
@@ -178,7 +182,6 @@ class Scene{
 
 		ctx.fillStyle = 'blue';
 		let adjusted = this.cameraOffset({x:0,y:0,width:this.width,height:this.height});
-		console.log(adjusted);
 		ctx.fillRect(adjusted.x,adjusted.y,this.width,this.height);
 
 		ctx.fillStyle = 'green';
@@ -213,6 +216,7 @@ class Obstacle{
 		this.y = y;
 		this.width = width;
 		this.height = height;
+		this.bulletStopping
 	}
 }
 
@@ -274,14 +278,25 @@ class Bullet {
 		this.damage = damage;
 		this.pierce = pierce;
 		this.hits = [];
+		this.angle = 0;
 	}
-	setDirection(x,y,xSign,ySign,spread){
+	setDirection(x,y,xPos,yPos,spread){
 		let theta = Math.atan(Math.abs(y)/Math.abs(x));
 		theta += spread;
 		this.direction = {};
-		this.direction.x = Math.cos(theta) * (xSign?1:-1);
-		this.direction.y = Math.sin(theta) * (ySign?1:-1);
+		if(xPos && !yPos) theta = Math.PI/2 * 3 + (Math.PI/2 - theta);
+		if(!xPos && !yPos) theta = Math.PI/2 * 2 + (theta);
+		if(!xPos && yPos) theta = Math.PI/2 + (Math.PI/2 - theta);
+		this.angle = theta;
+		this.direction.x = Math.cos(theta);
+		this.direction.y = Math.sin(theta);	
 	}
+	setAngle(theta){
+		this.angle = theta;
+		this.direction.x = Math.cos(theta);
+		this.direction.y = Math.sin(theta);	
+	}
+
 	move(){
 		this.x += this.speed * this.direction.x;
 		this.y += this.speed * this.direction.y;
