@@ -18,36 +18,6 @@ class Settings{
 	}
 }
 
-class Enemy{
-	constructor(x,y,width,height){
-		this.x = x;
-		this.y = y;
-		this.width = width;
-		this.height = height;
-		this.speed = 2;
-		this.hp = 100;
-		this.maxHp = this.hp;
-		this.id = Math.random() * Math.random();
-	}
-	move(towards,obstacles){
-		if(this.x < towards.x){
-			this.x += this.speed;
-		} else {
-			this.x -= this.speed;
-		}
-		if(this.y < towards.y){
-			this.y += this.speed;
-		} else {
-			this.y -= this.speed;
-		}
-		obstacles.forEach(obstacle=>{
-			if(game.scene.collide(obstacle,this)){
-				game.scene.backOffCollide(obstacle,this);
-			}
-		});
-	}
-}
-
 class Scene{
 	constructor(youX,youY,width,height,settings){
 		this.settings = settings;
@@ -76,7 +46,8 @@ class Scene{
 			bullet.move();
 		});
 		this.enemies.forEach(enemy=>{
-			enemy.move(this.you,this.obstacles);
+			enemy.setDirection(this.you.x,this.you.y);
+			enemy.move(this.obstacles);
 		})
 		this.bulletCollide();
 		this.handleInput();
@@ -176,7 +147,9 @@ class Scene{
 	cameraOffset(obj){
 		let adjustedX = (obj.x - (this.you.x)) + canvas.width/2;
 		let adjustedY = (obj.y - (this.you.y)) + canvas.height/2;
-		if(adjustedX + obj.width < 0 || adjustedX > canvas.width || adjustedY > canvas.height || adjustedY + obj.height < 0)
+		let oWidth = obj.width === undefined ? 0 : obj.width;
+		let oHeight = obj.height === undefined ? 0 : obj.height;
+		if(adjustedX + oWidth < 0 || adjustedX > canvas.width || adjustedY > canvas.height || adjustedY + oHeight < 0)
 			return;
 		return{
 			x:adjustedX,
@@ -225,7 +198,7 @@ class Scene{
 		this.faders.forEach((fader)=>{
 			ctx.globalAlpha = fader.opacity;
 			let adjusted = this.cameraOffset(fader);
-			ctx.fillText(fader.text,adjusted.x,adjusted.y+10);
+			if(adjusted) ctx.fillText(fader.text,adjusted.x,adjusted.y+10);
 
 		});
 		ctx.globalAlpha = 1;
@@ -239,6 +212,15 @@ class Obstacle{
 		this.y = y;
 		this.width = width;
 		this.height = height;
+	}
+}
+
+class Waypoint{
+	constructor(x,y){
+		this.x = x;
+		this.y = y;
+		this.width = 1;
+		this.height = 1;
 	}
 }
 
@@ -278,7 +260,7 @@ class Weapon{
 		}
 		this.timeout = game.scene.time + this.fireDelay;
 	}
-}	
+}
 
 class You{
 	constructor(x,y){
@@ -310,11 +292,47 @@ class You{
 		let xPos = x > 0;
 		let yPos = y > 0;
 		let theta = Math.atan(Math.abs(y)/Math.abs(x));
-		theta;
 		if(xPos && !yPos) theta = Math.PI/2 * 3 + (Math.PI/2 - theta);
 		if(!xPos && !yPos) theta = Math.PI/2 * 2 + (theta);
 		if(!xPos && yPos) theta = Math.PI/2 + (Math.PI/2 - theta);
 		this.angle = theta;
+	}
+}
+
+class Enemy{
+	constructor(x,y,width,height){
+		this.x = x;
+		this.y = y;
+		this.width = width;
+		this.height = height;
+		this.speed = 2;
+		this.hp = 100;
+		this.maxHp = this.hp;
+		this.id = Math.random() * Math.random();
+		this.angle = 0;
+		this.direction = {};
+	}
+	setDirection(youX,youY){
+		let x = youX- this.x;
+		let y = youY - this.y;
+		let xPos = x > 0;
+		let yPos = y > 0;
+		let theta = Math.atan(Math.abs(y)/Math.abs(x));
+		if(xPos && !yPos) theta = Math.PI/2 * 3 + (Math.PI/2 - theta);
+		if(!xPos && !yPos) theta = Math.PI/2 * 2 + (theta);
+		if(!xPos && yPos) theta = Math.PI/2 + (Math.PI/2 - theta);
+		this.direction.x = Math.cos(theta);
+		this.direction.y = Math.sin(theta);	
+		this.angle = theta;
+	}
+	move(obstacles){
+		this.x += this.speed * this.direction.x;
+		this.y += this.speed * this.direction.y;
+		obstacles.forEach(obstacle=>{
+			if(game.scene.collide(obstacle,this)){
+				game.scene.backOffCollide(obstacle,this);
+			}
+		});
 	}
 }
 
