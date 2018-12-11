@@ -184,8 +184,14 @@ class Scene{
 		let adjusted = this.cameraOffset({x:0,y:0,width:this.width,height:this.height});
 		ctx.fillRect(adjusted.x,adjusted.y,this.width,this.height);
 
+		/*Draw you*/
+		ctx.save();
+		//ctx.translate(canvas.width/2,canvas.height/2);
+		//ctx.rotate(you.theta);
 		ctx.fillStyle = 'green';
 		ctx.fillRect(canvas.width/2,canvas.height/2,you.width,you.height);
+		ctx.restore();
+
 		ctx.fillStyle = 'black';
 		this.bullets.forEach(bullet=>{
 			let adjusted = this.cameraOffset(bullet);
@@ -236,7 +242,7 @@ class Weapon{
 			return;
 		for(let i = -this.spread/2;i<this.spread/2;i+=this.spread/this.flechettes){
 			let bullet = new Bullet(you.getCenter().x,you.getCenter().y,this.speed,this.damage,this.pierce);
-			bullet.setDirection(x,y,x > 0, y > 0,i);
+			bullet.setDirection(you.angle,i);
 			game.scene.bullets.push(bullet);
 		}
 		this.timeout = game.scene.time + this.fireDelay;
@@ -252,6 +258,7 @@ class You{
 		this.height = 20;
 		this.weapon = new Weapon(15,Math.PI/8,5,2,10);
 		this.shooting = false;
+		this.angle = 0;
 	}
 	getCenter(){
 		return {
@@ -266,6 +273,18 @@ class You{
 			this.weapon.shoot(this,this.aimX, this.aimY);
 		}
 	}
+	setAngle(e){
+		let x = e.offsetX - canvas.width/2;
+		let y = e.offsetY - canvas.height/2;
+		let xPos = x > 0;
+		let yPos = y > 0;
+		let theta = Math.atan(Math.abs(y)/Math.abs(x));
+		theta;
+		if(xPos && !yPos) theta = Math.PI/2 * 3 + (Math.PI/2 - theta);
+		if(!xPos && !yPos) theta = Math.PI/2 * 2 + (theta);
+		if(!xPos && yPos) theta = Math.PI/2 + (Math.PI/2 - theta);
+		this.angle = theta;
+	}
 }
 
 class Bullet {
@@ -279,24 +298,14 @@ class Bullet {
 		this.pierce = pierce;
 		this.hits = [];
 		this.angle = 0;
-	}
-	setDirection(x,y,xPos,yPos,spread){
-		let theta = Math.atan(Math.abs(y)/Math.abs(x));
-		theta += spread;
 		this.direction = {};
-		if(xPos && !yPos) theta = Math.PI/2 * 3 + (Math.PI/2 - theta);
-		if(!xPos && !yPos) theta = Math.PI/2 * 2 + (theta);
-		if(!xPos && yPos) theta = Math.PI/2 + (Math.PI/2 - theta);
-		this.angle = theta;
+	}
+	setDirection(theta,spread){
+		theta += spread
 		this.direction.x = Math.cos(theta);
 		this.direction.y = Math.sin(theta);	
-	}
-	setAngle(theta){
 		this.angle = theta;
-		this.direction.x = Math.cos(theta);
-		this.direction.y = Math.sin(theta);	
 	}
-
 	move(){
 		this.x += this.speed * this.direction.x;
 		this.y += this.speed * this.direction.y;
@@ -306,6 +315,7 @@ class Bullet {
 let game;
 canvas.addEventListener('mousedown',(e)=>{
 	let you = game.scene.you;
+	you.setAngle(e);
 	you.aimX = e.offsetX - canvas.width/2;
 	you.aimY = e.offsetY - canvas.height/2;
 	you.shooting = true;
@@ -316,8 +326,7 @@ canvas.addEventListener('mouseup',(e)=>{
 });
 canvas.addEventListener('mousemove',(e)=>{
 	let you = game.scene.you;
-	you.aimX = e.offsetX - canvas.width/2;
-	you.aimY = e.offsetY - canvas.height/2;
+	you.setAngle(e);
 });
 window.addEventListener('load',()=>{
 	game = new Game();
