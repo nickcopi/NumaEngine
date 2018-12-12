@@ -17,6 +17,33 @@ class Settings{
 		this.RIGHT_KEY = 68;
 	}
 }
+class AstarNode{
+	constructor(x,y,width,height){
+		this.x = x;
+		this.y = y;
+		this.width = width;
+		this.height = height;
+		this.h = 0;
+		/*this.g = 0; // g is acquired score*/
+		this.f = 0;
+		this.wall = false;
+		this.neighbors = [];
+	}
+	findNeighbors(grid){
+		let x = this.x;
+		let y = this.y;
+		let col = grid.length;
+		let row = grid[0].length;
+		if(x > 0) this.neighbors.push(grid[x-1][y]);
+		if(y > 0) this.neighbors.push(grid[x][y-1]);
+		if(x < col-1) this.neighbors.push(grid[x+1][y]);
+		if(y < row-1) this.neighbors.push(grid[x][y+1]);
+		if(x < col-1 && y > 0) this.neighbors.push(grid[x+1][y-1]);
+		if(x < col-1 && y < row-1) this.neighbors.push(grid[x+1][y+1]);
+		if(x > 0 && y > 0) this.neighbors.push(grid[x-1][y-1]);
+		if(x > 0 && y < row-1) this.neighbors.push(grid[x-1][y+1]);
+	}
+}
 
 class Scene{
 	constructor(youX,youY,width,height,settings){
@@ -27,12 +54,13 @@ class Scene{
 		this.obstacles = [];
 		this.enemies = [];
 		this.faders = [];
-		this.obstacles.push(new Obstacle(20,20,200,200));
-		this.obstacles.push(new Obstacle(20,240,700,20));
-		this.enemies.push(new Enemy(10,10,20,20));	
+		this.obstacles.push(new Obstacle(600,20,200,200));
+		this.obstacles.push(new Obstacle(100,240,700,50));
+		this.enemies.push(new Enemy(0,10,20,20));
 		this.keys = [];
 		this.time = 0;
 		this.you = new You(youX,youY);
+		//this.nodePath = this.enemies[0].setPath(this.width,this.height,this.obstacles,this.you,this.collide);
 		setInterval(()=>{
 			this.update();
 			this.render();
@@ -46,9 +74,10 @@ class Scene{
 			bullet.move();
 		});
 		this.enemies.forEach(enemy=>{
-			enemy.setDirection(this.you.x,this.you.y);
-			enemy.move(this.obstacles);
-		})
+			if(enemy.needsPath) enemy.setPath(this.width,this.height,this.obstacles,this.you,this.collide);
+			enemy.setDirection(this.you,this.collide);
+			enemy.move(this.obstacles,this.width,this.height);
+		})	
 		this.bulletCollide();
 		this.handleInput();
 		this.checkBounds();
@@ -101,7 +130,7 @@ class Scene{
 		if(this.you.x + this.you.width > this.width) this.you.x = this.width - this.you.width;
 		if(this.you.y < 0) this.you.y = 0;
 		if(this.you.y + this.you.height > this.height) this.you.y = this.height - this.you.height;
-			
+
 	}
 	collide(o1,o2){
 		return o1.x < o2.x + o2.width && o1.x + o1.width > o2.x && o1.y < o2.y + o2.height && o1.y + o1.height > o2.y;
@@ -115,16 +144,16 @@ class Scene{
 		let options = [pushLeft,pushRight,pushUp,pushDown];
 		switch(options.indexOf(Math.min(...options))){
 			case 0:
-				o2.x = o1.x - o2.width;
+			o2.x = o1.x - o2.width;
 			break;
 			case 1:
-				o2.x = o1.x + o1.width;
+			o2.x = o1.x + o1.width;
 			break;
 			case 2:
-				o2.y = o1.y - o2.height;
+			o2.y = o1.y - o2.height;
 			break;
 			case 3:
-				o2.y = o1.y + o1.height;
+			o2.y = o1.y + o1.height;
 			break;
 		}
 	}
@@ -179,11 +208,14 @@ class Scene{
 			let adjusted = this.cameraOffset(bullet);
 			if(adjusted) ctx.fillRect(adjusted.x,adjusted.y,bullet.width,bullet.height);
 		});
+
+
 		ctx.fillStyle = 'gray';
 		this.obstacles.forEach(obstacle=>{
 			let adjusted = this.cameraOffset(obstacle);
 			if(adjusted) ctx.fillRect(adjusted.x,adjusted.y,obstacle.width,obstacle.height);
 		});
+		ctx.strokeStyle = 'white';
 		this.enemies.forEach(enemy=>{
 			let adjusted = this.cameraOffset(enemy);
 			if(adjusted){
@@ -193,6 +225,14 @@ class Scene{
 				ctx.fillStyle = 'green';
 				ctx.fillRect(adjusted.x,adjusted.y + enemy.height + 5,enemy.width * enemy.hp/enemy.maxHp,5);
 			}
+			ctx.beginPath();
+			ctx.lineTo(canvas.width/2,canvas.height/2)
+			enemy.path.forEach(path=>{
+				let adjusted = this.cameraOffset(path);
+				if(adjusted) ctx.lineTo(adjusted.x,adjusted.y);
+			});
+			if(adjusted) ctx.lineTo(adjusted.x,adjusted.y);
+			ctx.stroke();
 		});
 		ctx.fillStyle = 'black'; 
 		this.faders.forEach((fader)=>{
@@ -202,6 +242,8 @@ class Scene{
 
 		});
 		ctx.globalAlpha = 1;
+
+		
 
 	}
 }
@@ -311,10 +353,17 @@ class Enemy{
 		this.id = Math.random() * Math.random();
 		this.angle = 0;
 		this.direction = {};
+		this.path = [];
+		this.needsPath = true;
 	}
-	setDirection(youX,youY){
-		let x = youX- this.x;
-		let y = youY - this.y;
+	setDirection(you, collide){
+		let pos = this.path[this.path.length-1];
+		if(!pos)
+			pos = you;
+		let x = pos.x;
+		let y = pos.y;
+		x -= this.x;
+		y -= this.y;
 		let xPos = x > 0;
 		let yPos = y > 0;
 		let theta = Math.atan(Math.abs(y)/Math.abs(x));
@@ -324,8 +373,95 @@ class Enemy{
 		this.direction.x = Math.cos(theta);
 		this.direction.y = Math.sin(theta);	
 		this.angle = theta;
+		if(this.path.length <= 0)
+			this.needsPath = true;
+		if(collide(pos,this)){
+			this.needsPath = true;
+			this.path.pop();
+		}
+
+		
 	}
-	move(obstacles){
+	loadPath(endNode){
+		this.needsPath = false;
+		let node = endNode.parent;
+		this.path = [];
+		while(node){
+			this.path.push(new Obstacle(node.x * node.width, node.y * node.height, 5, 5));
+			node = node.parent;
+		}
+		this.path.pop();
+	}
+	setPath(width,height,obstacles,you,collide){
+		console.log('A*..')
+		let col = 50;
+		let row = 50;
+		let unitWidth = width/col;
+		let unitHeight = height/row;
+		let grid = new Array(col);
+		for(let i = 0;i < grid.length; i++){
+			grid[i] = new Array(row);
+		}
+		for(let x = 0; x < grid.length; x++){
+			for(let y = 0; y < grid[x].length; y++){
+				grid[x][y] = new AstarNode(x,y,unitWidth,unitHeight);
+				for(let i = 0; i < obstacles.length; i++){
+					let fakeNode = {x:x*unitWidth,y:y*unitHeight,width:unitWidth,height:unitHeight};
+					if(collide(fakeNode,obstacles[i])){
+						grid[x][y].wall = true;
+					} 
+				}
+			}
+		}
+		for(let x = 0; x < grid.length; x++){
+			for(let y = 0; y < grid[x].length; y++){
+				grid[x][y].findNeighbors(grid);
+			}
+		}
+		console.log(Math.floor(this.x/unitWidth),Math.floor(this.y/unitHeight))
+		let start = grid[Math.floor(this.x/unitWidth)][Math.floor(this.y/unitHeight)];
+		let end = grid[Math.floor(you.x/unitWidth)][Math.floor(you.y/unitHeight)];
+		let openSet = [start];
+		let closedSet = [];
+		let dist = (x1,y1,x2,y2)=>{
+			return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2));
+		}
+		end.wall = false;
+		while(openSet.length > 0){
+			let winner = 0;
+			openSet.forEach((open,i)=>{
+				if(open.f < openSet[winner].f){
+					winner = i;
+				}
+			});
+			let current = openSet[winner];
+			if(current === end) {
+				this.loadPath(current);
+				return current;
+			}
+			openSet = openSet.filter(i=>i!=current);
+			closedSet.push(current);
+			for(let i = 0; i < current.neighbors.length;i++){
+				let neighbor = current.neighbors[i];
+				if(closedSet.includes(neighbor) || neighbor.wall)
+					continue;
+				let nonDiagonal = current.x == neighbor.x || current.y == neighbor.y;
+				let tempG = current.g === undefined?0:current.g;
+				tempG += nonDiagonal?1:Math.sqrt(2);
+				if(!openSet.includes(neighbor)){
+					openSet.push(neighbor);
+				} else {
+					if(tempG >= neighbor.g)
+						continue;
+				}
+				neighbor.parent = current;
+				neighbor.g = tempG;
+				neighbor.f = tempG + dist(neighbor.x,neighbor.y,end.x,end.y);
+				//console.log(tempG)
+			}
+		}
+	}
+	move(obstacles,width,height){
 		this.x += this.speed * this.direction.x;
 		this.y += this.speed * this.direction.y;
 		obstacles.forEach(obstacle=>{
@@ -333,6 +469,10 @@ class Enemy{
 				game.scene.backOffCollide(obstacle,this);
 			}
 		});
+		if(this.x < 0) this.x = 0;
+		if(this.y < 0) this.y = 0;
+		if(this.x + this.width > width) this.x = width - this.width;
+		if(this.y + this.height > height) this.y = height - this.height;
 	}
 }
 
