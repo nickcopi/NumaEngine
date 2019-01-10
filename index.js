@@ -4,9 +4,20 @@ let ctx = canvas.getContext('2d');
 
 class Game{
 	constructor(){
+		this.sprites = {
+			enemy: new Image(),
+			bg: new Image(),
+			you: new Image()
+		}
+		this.sprites.enemy.src = 'enemy.png';
+		this.sprites.bg.src = 'bg.png';
+		this.sprites.you.src = 'you.png';
 		this.settings = new Settings();
-		this.scene = new Scene(canvas.width/2,canvas.height/2,3000,3000,this.settings,'bg.png');
+		this.scene = new Scene(canvas.width/2,canvas.height/2,3000,3000,this.settings,this.sprites);
+		
+
 	}
+
 }
 
 class Settings{
@@ -46,8 +57,9 @@ class AstarNode{
 }
 
 class Scene{
-	constructor(youX,youY,width,height,settings,bg){
+	constructor(youX,youY,width,height,settings,sprites){
 		this.settings = settings;
+		this.sprites = sprites;
 		this.width = width;
 		this.height = height;
 		this.bullets = [];
@@ -56,19 +68,19 @@ class Scene{
 		this.faders = [];
 		this.obstacles.push(new Obstacle(600,20,200,200));
 		this.obstacles.push(new Obstacle(100,240,700,50));
-		this.enemies.push(new Enemy(0,10,20,20));
+		this.enemies.push(new Enemy(0,10,20,20,100,2,this.sprites.enemy));
 		this.keys = [];
 		this.time = 0;
 		this.AI_DEBUG = false;
 		this.gridLines = [];
-		this.bg = new Background(0,0,width,height,bg);
+		this.bg = new Background(0,0,width,height,this.sprites.bg);
 		for(let i = 0; i < width/50;i++){
 			this.gridLines.push(new Obstacle(i * (width/50),0,1,width));
 		}
 		for(let i = 0; i < height/50;i++){
 			this.gridLines.push(new Obstacle(0,i * (height/50),height,1));
 		}
-		this.you = new You(youX,youY);
+		this.you = new You(youX,youY,this.sprites.you);
 		//this.nodePath = this.enemies[0].setPath(this.width,this.height,this.obstacles,this.you,this.collide);
 		setInterval(()=>{
 			this.update();
@@ -200,9 +212,7 @@ class Scene{
 		ctx.fillStyle = 'black';
 		ctx.fillRect(0,0,canvas.width,canvas.height);
 
-		
-
-		//ctx.fillStyle = 'blue';
+		/*Draw background*/
 		let adjusted = this.cameraOffset(this.bg);
 		if(adjusted) ctx.drawImage(this.bg.img,adjusted.x,adjusted.y,this.bg.width,this.bg.height);
 
@@ -237,8 +247,12 @@ class Scene{
 		this.enemies.forEach(enemy=>{
 			let adjusted = this.cameraOffset(enemy);
 			if(adjusted){
+				ctx.save();
+				ctx.translate(adjusted.x+enemy.width/2,adjusted.y+enemy.height/2);
+				ctx.rotate(enemy.angle);
 				ctx.fillStyle = 'red'; 
-				ctx.fillRect(adjusted.x,adjusted.y,enemy.width,enemy.height);
+				ctx.drawImage(enemy.img, -(enemy.width/2),-(enemy.height/2),enemy.width, enemy.height);
+				ctx.restore();
 				ctx.fillRect(adjusted.x,adjusted.y + enemy.height + 5,enemy.width,5);
 				ctx.fillStyle = 'green';
 				ctx.fillRect(adjusted.x,adjusted.y + enemy.height + 5,enemy.width * enemy.hp/enemy.maxHp,5);
@@ -302,13 +316,12 @@ class HitText{
 }
 
 class Background{
-	constructor(x,y,width,height,src){
+	constructor(x,y,width,height,img){
 		this.x = x;
 		this.y = y;
 		this.width = width;
 		this.height = height;
-		this.img = new Image();
-		this.img.src = src;
+		this.img = img;
 	}
 }
 
@@ -336,7 +349,7 @@ class Weapon{
 }
 
 class You{
-	constructor(x,y){
+	constructor(x,y,img){
 		this.x = x;
 		this.y = y;
 		this.speed = 4;
@@ -345,8 +358,7 @@ class You{
 		this.weapon = new Weapon(15,Math.PI/8,5,2,10,10,2);
 		this.shooting = false;
 		this.angle = 0;
-		this.img = new Image();
-		this.img.src = 'you.png';
+		this.img = img;
 	}
 	getCenter(){
 		return {
@@ -375,14 +387,15 @@ class You{
 }
 
 class Enemy{
-	constructor(x,y,width,height){
+	constructor(x,y,width,height,hp,speed,img){
 		this.x = x;
 		this.y = y;
 		this.width = width;
 		this.height = height;
-		this.speed = 2;
-		this.hp = 100;
+		this.speed = speed;
+		this.hp = hp;
 		this.maxHp = this.hp;
+		this.img = img;
 		this.id = Math.random() * Math.random();
 		this.angle = 0;
 		this.direction = {};
