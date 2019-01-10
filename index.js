@@ -5,7 +5,7 @@ let ctx = canvas.getContext('2d');
 class Game{
 	constructor(){
 		this.settings = new Settings();
-		this.scene = new Scene(canvas.width/2,canvas.height/2,3000,3000,this.settings);
+		this.scene = new Scene(canvas.width/2,canvas.height/2,3000,3000,this.settings,'bg.png');
 	}
 }
 
@@ -46,7 +46,7 @@ class AstarNode{
 }
 
 class Scene{
-	constructor(youX,youY,width,height,settings){
+	constructor(youX,youY,width,height,settings,bg){
 		this.settings = settings;
 		this.width = width;
 		this.height = height;
@@ -59,6 +59,15 @@ class Scene{
 		this.enemies.push(new Enemy(0,10,20,20));
 		this.keys = [];
 		this.time = 0;
+		this.AI_DEBUG = false;
+		this.gridLines = [];
+		this.bg = new Background(0,0,width,height,bg);
+		for(let i = 0; i < width/50;i++){
+			this.gridLines.push(new Obstacle(i * (width/50),0,1,width));
+		}
+		for(let i = 0; i < height/50;i++){
+			this.gridLines.push(new Obstacle(0,i * (height/50),height,1));
+		}
 		this.you = new You(youX,youY);
 		//this.nodePath = this.enemies[0].setPath(this.width,this.height,this.obstacles,this.you,this.collide);
 		setInterval(()=>{
@@ -191,16 +200,25 @@ class Scene{
 		ctx.fillStyle = 'black';
 		ctx.fillRect(0,0,canvas.width,canvas.height);
 
-		ctx.fillStyle = 'blue';
-		let adjusted = this.cameraOffset({x:0,y:0,width:this.width,height:this.height});
-		ctx.fillRect(adjusted.x,adjusted.y,this.width,this.height);
+		
+
+		//ctx.fillStyle = 'blue';
+		let adjusted = this.cameraOffset(this.bg);
+		if(adjusted) ctx.drawImage(this.bg.img,adjusted.x,adjusted.y,this.bg.width,this.bg.height);
+
+		if(this.AI_DEBUG){
+			ctx.fillStyle = 'white';
+			this.gridLines.forEach(line=>{
+				let adjusted = this.cameraOffset(line);
+				if(adjusted) ctx.fillRect(adjusted.x,adjusted.y,line.width,line.height);
+			});
+		}
 
 		/*Draw you*/
 		ctx.save();
 		ctx.translate(canvas.width/2 + (you.width/2),canvas.height/2 + (you.height/2));
 		ctx.rotate(you.angle);
-		ctx.fillStyle = 'green';
-		ctx.fillRect(you.width/-2,you.height/-2,you.width,you.height);
+		ctx.drawImage(you.img, you.width/-2,you.height/-2,you.width,you.height);
 		ctx.restore();
 
 		ctx.fillStyle = 'black';
@@ -215,7 +233,7 @@ class Scene{
 			let adjusted = this.cameraOffset(obstacle);
 			if(adjusted) ctx.fillRect(adjusted.x,adjusted.y,obstacle.width,obstacle.height);
 		});
-		ctx.strokeStyle = 'white';
+		ctx.strokeStyle = 'red';
 		this.enemies.forEach(enemy=>{
 			let adjusted = this.cameraOffset(enemy);
 			if(adjusted){
@@ -225,14 +243,16 @@ class Scene{
 				ctx.fillStyle = 'green';
 				ctx.fillRect(adjusted.x,adjusted.y + enemy.height + 5,enemy.width * enemy.hp/enemy.maxHp,5);
 			}
-			ctx.beginPath();
-			ctx.lineTo(canvas.width/2,canvas.height/2)
-			enemy.path.forEach(path=>{
-				let adjusted = this.cameraOffset(path);
+			if(this.AI_DEBUG){
+				ctx.beginPath();
+				ctx.lineTo(canvas.width/2,canvas.height/2)
+				enemy.path.forEach(path=>{
+					let adjusted = this.cameraOffset(path);
+					if(adjusted) ctx.lineTo(adjusted.x,adjusted.y);
+				});
 				if(adjusted) ctx.lineTo(adjusted.x,adjusted.y);
-			});
-			if(adjusted) ctx.lineTo(adjusted.x,adjusted.y);
-			ctx.stroke();
+				ctx.stroke();
+			}
 		});
 		ctx.fillStyle = 'black'; 
 		this.faders.forEach((fader)=>{
@@ -281,22 +301,33 @@ class HitText{
 	}
 }
 
+class Background{
+	constructor(x,y,width,height,src){
+		this.x = x;
+		this.y = y;
+		this.width = width;
+		this.height = height;
+		this.img = new Image();
+		this.img.src = src;
+	}
+}
+
 class Weapon{
-	constructor(speed,spread,flechettes,pierce,fireDelay){
+	constructor(speed,spread,flechettes,pierce,fireDelay,damage,radius){
 		this.speed = speed;
 		this.spread = spread;
 		this.flechettes = flechettes;
 		this.pierce = pierce;
 		this.fireDelay = fireDelay;
-		this.timeout = 0;
-		this.damage = 10;
-		this.pierce = 2;
+		this.damage = damage;
+		this.radius = radius;
+		this.timeout = 0;		
 	} 
 	shoot(you,x,y){
 		if(this.timeout > game.scene.time)
 			return;
 		for(let i = -this.spread/2;i<this.spread/2;i+=this.spread/this.flechettes){
-			let bullet = new Bullet(you.getCenter().x,you.getCenter().y,this.speed,this.damage,this.pierce);
+			let bullet = new Bullet(you.getCenter().x,you.getCenter().y,this.speed,this.damage,this.pierce,this.radius);
 			bullet.setDirection(you.angle,i);
 			game.scene.bullets.push(bullet);
 		}
@@ -311,9 +342,11 @@ class You{
 		this.speed = 4;
 		this.width = 20;
 		this.height = 20;
-		this.weapon = new Weapon(15,Math.PI/8,5,2,10);
+		this.weapon = new Weapon(15,Math.PI/8,5,2,10,10,2);
 		this.shooting = false;
 		this.angle = 0;
+		this.img = new Image();
+		this.img.src = 'you.png';
 	}
 	getCenter(){
 		return {
@@ -393,7 +426,7 @@ class Enemy{
 		this.path.pop();
 	}
 	setPath(width,height,obstacles,you,collide){
-		console.log('A*..')
+		return;
 		let col = 50;
 		let row = 50;
 		let unitWidth = width/col;
@@ -418,7 +451,6 @@ class Enemy{
 				grid[x][y].findNeighbors(grid);
 			}
 		}
-		console.log(Math.floor(this.x/unitWidth),Math.floor(this.y/unitHeight))
 		let start = grid[Math.floor(this.x/unitWidth)][Math.floor(this.y/unitHeight)];
 		let end = grid[Math.floor(you.x/unitWidth)][Math.floor(you.y/unitHeight)];
 		let openSet = [start];
@@ -477,11 +509,11 @@ class Enemy{
 }
 
 class Bullet {
-	constructor(x,y,speed,damage,pierce){
+	constructor(x,y,speed,damage,pierce,radius){
 		this.x = x;
 		this.y = y;
-		this.width = 5;
-		this.height = 5;
+		this.width = radius;
+		this.height = radius;
 		this.speed = speed;
 		this.damage = damage;
 		this.pierce = pierce;
