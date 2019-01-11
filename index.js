@@ -91,6 +91,9 @@ class Scene{
 		this.time++;
 		this.fadeFaders();
 		this.you.shoot();
+		if(this.you.weapon.reloading){
+			this.you.weapon.reload();
+		}
 		this.bullets.forEach(bullet=>{
 			bullet.move();
 		});
@@ -98,7 +101,7 @@ class Scene{
 			if(enemy.needsPath) enemy.setPath(this.width,this.height,this.obstacles,this.you,this.collide);
 			enemy.setDirection(this.you,this.collide);
 			enemy.move(this.obstacles,this.width,this.height);
-		})	
+		})
 		this.bulletCollide();
 		this.handleInput();
 		this.checkBounds();
@@ -326,7 +329,7 @@ class Background{
 }
 
 class Weapon{
-	constructor(speed,spread,flechettes,pierce,fireDelay,damage,radius){
+	constructor(speed,spread,flechettes,pierce,fireDelay,damage,radius, capacity, reload,auto){
 		this.speed = speed;
 		this.spread = spread;
 		this.flechettes = flechettes;
@@ -334,17 +337,33 @@ class Weapon{
 		this.fireDelay = fireDelay;
 		this.damage = damage;
 		this.radius = radius;
-		this.timeout = 0;		
+		this.timeout = 0;
+		this.capacity = capacity;
+		this.reloadBase = reload;
+		this.auto = auto;
+		this.mag = capacity;
+		this.reloading = false;
 	} 
 	shoot(you,x,y){
-		if(this.timeout > game.scene.time)
+		if(this.timeout > game.scene.time || this.mag <= 0 || this.reloading)
 			return;
 		for(let i = -this.spread/2;i<this.spread/2;i+=this.spread/this.flechettes){
 			let bullet = new Bullet(you.getCenter().x,you.getCenter().y,this.speed,this.damage,this.pierce,this.radius);
 			bullet.setDirection(you.angle,i);
 			game.scene.bullets.push(bullet);
 		}
+		this.mag--;
+		if(this.mag === 0){
+			this.reloadTime = game.scene.time + this.reloadBase;
+			this.reloading = true;
+		}
 		this.timeout = game.scene.time + this.fireDelay;
+	}
+	reload(){
+		if(this.reloadTime <= game.scene.time){
+			this.mag = this.capacity;
+			this.reloading = false;
+		}
 	}
 }
 
@@ -355,7 +374,7 @@ class You{
 		this.speed = 4;
 		this.width = 20;
 		this.height = 20;
-		this.weapon = new Weapon(15,Math.PI/8,5,2,10,10,2);
+		this.weapon = new Weapon(15,Math.PI/8,5,2,10,10,2,5,30,true);
 		this.shooting = false;
 		this.angle = 0;
 		this.img = img;
@@ -566,6 +585,10 @@ window.addEventListener('load',()=>{
 });
 window.addEventListener('keydown',(e)=>{
 	game.scene.keys[e.keyCode] = true;
+	if(e.keyCode === 82 && !game.scene.you.weapon.reloading){
+		game.scene.you.weapon.reloadTime = game.scene.time + game.scene.you.weapon.reloadBase;
+		game.scene.you.weapon.reloading = true;
+	}
 });
 window.addEventListener('keyup',(e)=>{
 	game.scene.keys[e.keyCode] = false;
