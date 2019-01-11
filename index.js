@@ -66,12 +66,14 @@ class Scene{
 		this.obstacles = [];
 		this.enemies = [];
 		this.faders = [];
+		this.hitFields = [];
 		this.obstacles.push(new Obstacle(600,20,200,200));
 		this.obstacles.push(new Obstacle(100,240,700,50));
-		this.enemies.push(new Enemy(0,10,20,20,100,2,this.sprites.enemy));
+		this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
 		this.keys = [];
 		this.time = 0;
 		this.AI_DEBUG = false;
+		this.HIT_DEBUG = false;
 		this.gridLines = [];
 		this.bg = new Background(0,0,width,height,this.sprites.bg);
 		for(let i = 0; i < width/50;i++){
@@ -97,10 +99,14 @@ class Scene{
 		this.bullets.forEach(bullet=>{
 			bullet.move();
 		});
+		this.hitFields = this.hitFields.filter(hitField=>{
+			hitField.hit(this.you,this.collide);
+			return hitField.active;
+		});
 		this.enemies.forEach(enemy=>{
 			if(enemy.needsPath) enemy.setPath(this.width,this.height,this.obstacles,this.you,this.collide);
 			enemy.setDirection(this.you,this.collide);
-			enemy.move(this.obstacles,this.width,this.height);
+			enemy.move(this.obstacles,this.you,this.width,this.height);
 		})
 		this.bulletCollide();
 		this.handleInput();
@@ -234,6 +240,12 @@ class Scene{
 		ctx.drawImage(you.img, you.width/-2,you.height/-2,you.width,you.height);
 		ctx.restore();
 
+		ctx.fillStyle = 'red';
+		ctx.fillRect(canvas.width/2,canvas.height/2 + you.height + 5, you.width,5);
+		ctx.fillStyle = 'green';
+		ctx.fillRect(canvas.width/2,canvas.height/2 + you.height + 5,you.width * you.hp/you.maxHp,5);
+
+
 		ctx.fillStyle = 'black';
 		this.bullets.forEach(bullet=>{
 			let adjusted = this.cameraOffset(bullet);
@@ -271,6 +283,14 @@ class Scene{
 				ctx.stroke();
 			}
 		});
+		if(this.HIT_DEBUG){
+			ctx.globalAlpha = .2;
+			this.hitFields.forEach(hitField=>{
+				let adjusted = this.cameraOffset(hitField);
+				if(adjusted && hitField.active) ctx.fillRect(adjusted.x,adjusted.y,hitField.width,hitField.height);
+			});
+			ctx.globalAlpha = 1;
+		}
 		ctx.fillStyle = 'black'; 
 		this.faders.forEach((fader)=>{
 			ctx.globalAlpha = fader.opacity;
@@ -279,9 +299,6 @@ class Scene{
 
 		});
 		ctx.globalAlpha = 1;
-
-		
-
 	}
 }
 
@@ -315,6 +332,24 @@ class HitText{
 	}
 	alive(){
 		return this.opacity > 0;
+	}
+}
+
+class HitField{
+	constructor(x,y,width,height,dmg){
+		this.x = x;
+		this.y = y;
+		this.width = width;
+		this.height = height;
+		this.active = true;
+		this.dmg = dmg;
+	}
+	hit(target,collide){
+		if(!this.active) return;
+		if(collide(this,target)){
+			this.active = false;
+			target.damage(this.dmg);
+		}
 	}
 }
 
@@ -378,12 +413,19 @@ class You{
 		this.shooting = false;
 		this.angle = 0;
 		this.img = img;
+		this.maxHp = 100;
+		this.hp = 100;
 	}
 	getCenter(){
 		return {
 			x: this.x+this.width/2,
 			y: this.y+this.height/2
 		}
+	}
+	damage(dmg){
+		this.hp -= dmg;
+		if(this.hp <= 0)
+			return; /*handle player death*/
 	}
 	shoot(){
 		if(this.shooting){
@@ -406,12 +448,13 @@ class You{
 }
 
 class Enemy{
-	constructor(x,y,width,height,hp,speed,img){
+	constructor(x,y,width,height,hp,speed,dmg,img){
 		this.x = x;
 		this.y = y;
 		this.width = width;
 		this.height = height;
 		this.speed = speed;
+		this.dmg = dmg;
 		this.hp = hp;
 		this.maxHp = this.hp;
 		this.img = img;
@@ -420,6 +463,14 @@ class Enemy{
 		this.direction = {};
 		this.path = [];
 		this.needsPath = true;
+		this.attackTime = 0;
+		this.attackSpeed = 60;
+	}
+	attack(time,hitFields){
+		if(this.attackTime > time) return;
+		this.attackTime = time + this.attackSpeed;
+		this.activeHit = new HitField(this.x+this.width/2 + this.width/2*Math.cos(this.angle),this.y+this.height/2+ this.height/2*Math.sin(this.angle),this.width,this.height,this.dmg);
+		hitFields.push(this.activeHit);
 	}
 	setDirection(you, collide){
 		let pos = this.path[this.path.length-1];
@@ -444,8 +495,6 @@ class Enemy{
 			this.needsPath = true;
 			this.path.pop();
 		}
-
-		
 	}
 	loadPath(endNode){
 		this.needsPath = false;
@@ -487,9 +536,7 @@ class Enemy{
 		let end = grid[Math.floor(you.x/unitWidth)][Math.floor(you.y/unitHeight)];
 		let openSet = [start];
 		let closedSet = [];
-		let dist = (x1,y1,x2,y2)=>{
-			return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2));
-		}
+		let dist = this.dist;
 		end.wall = false;
 		while(openSet.length > 0){
 			let winner = 0;
@@ -525,7 +572,14 @@ class Enemy{
 			}
 		}
 	}
-	move(obstacles,width,height){
+	move(obstacles,you,width,height){
+		if(this.attackTime > game.scene.time) return;
+		if(this.attackTime === game.scene.time && this.activeHit)
+			this.activeHit.active = false;
+		if(this.dist(this.x,this.y,you.x,you.y) <= this.width){
+			this.attack(game.scene.time,game.scene.hitFields);
+			return;
+		}
 		this.x += this.speed * this.direction.x;
 		this.y += this.speed * this.direction.y;
 		obstacles.forEach(obstacle=>{
@@ -537,6 +591,9 @@ class Enemy{
 		if(this.y < 0) this.y = 0;
 		if(this.x + this.width > width) this.x = width - this.width;
 		if(this.y + this.height > height) this.y = height - this.height;
+	}
+	dist(x1,y1,x2,y2){
+		return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2));
 	}
 }
 
