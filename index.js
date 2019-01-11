@@ -364,9 +364,10 @@ class Background{
 }
 
 class Weapon{
-	constructor(speed,spread,flechettes,pierce,fireDelay,damage,radius, capacity, reload,auto){
+	constructor(speed,spread,spray,flechettes,pierce,fireDelay,damage,radius, capacity, reload,auto){
 		this.speed = speed;
 		this.spread = spread;
+		this.spray = spray
 		this.flechettes = flechettes;
 		this.pierce = pierce;
 		this.fireDelay = fireDelay;
@@ -380,11 +381,13 @@ class Weapon{
 		this.reloading = false;
 	} 
 	shoot(you,x,y){
-		if(this.timeout > game.scene.time || this.mag <= 0 || this.reloading)
+		if(this.timeout > game.scene.time || this.reloading)
 			return;
 		for(let i = -this.spread/2;i<this.spread/2;i+=this.spread/this.flechettes){
 			let bullet = new Bullet(you.getCenter().x,you.getCenter().y,this.speed,this.damage,this.pierce,this.radius);
-			bullet.setDirection(you.angle,i);
+			let randomSpray = Math.random()*this.spray*2 - this.spray;
+			console.log(randomSpray,this.spray);
+			bullet.setDirection(you.angle+i+randomSpray);
 			game.scene.bullets.push(bullet);
 		}
 		this.mag--;
@@ -409,7 +412,7 @@ class You{
 		this.speed = 4;
 		this.width = 20;
 		this.height = 20;
-		this.weapon = new Weapon(15,Math.PI/8,5,2,10,10,2,5,30,true);
+		this.weapon = new Weapon(15,Math.PI/8,Math.PI/32,5,2,10,10,2,5,30,true);
 		this.shooting = false;
 		this.angle = 0;
 		this.img = img;
@@ -610,8 +613,7 @@ class Bullet {
 		this.angle = 0;
 		this.direction = {};
 	}
-	setDirection(theta,spread){
-		theta += spread
+	setDirection(theta){
 		this.direction.x = Math.cos(theta);
 		this.direction.y = Math.sin(theta);	
 		this.angle = theta;
