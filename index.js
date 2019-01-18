@@ -168,7 +168,7 @@ class Scene{
 
 	}
 	collide(o1,o2){
-		return o1.x < o2.x + o2.width && o1.x + o1.width > o2.x && o1.y < o2.y + o2.height && o1.y + o1.height > o2.y;
+		return (o1.x < o2.x + o2.width && o1.x + o1.width > o2.x && o1.y < o2.y + o2.height && o1.y + o1.height > o2.y) && o1 !== o2;
 	}
 	/*o1 is immobile, o2 will be moved*/
 	backOffCollide(o1,o2){
@@ -473,6 +473,7 @@ class Enemy{
 		this.needsPath = true;
 		this.attackTime = 0;
 		this.attackSpeed = 60;
+		this.slowed = 0;
 	}
 	attack(time,hitFields){
 		if(this.attackTime > time) return;
@@ -588,11 +589,24 @@ class Enemy{
 			this.attack(game.scene.time,game.scene.hitFields);
 			return;
 		}
-		this.x += this.speed * this.direction.x;
-		this.y += this.speed * this.direction.y;
+		let speed = this.speed;
+		if(this.slowed > game.scene.time) speed /= 2;
+		this.x += speed * this.direction.x;
+		this.y += speed * this.direction.y;
 		obstacles.forEach(obstacle=>{
 			if(game.scene.collide(obstacle,this)){
 				game.scene.backOffCollide(obstacle,this);
+			}
+		});
+		game.scene.enemies.forEach(enemy=>{
+			if(game.scene.collide(enemy,this)){
+				//console.log(enemy.slowed, game.scene.time)
+				if(enemy.slowed <= game.scene.time){
+
+					this.slowed = game.scene.time + 20;
+				}
+				//game.scene.backOffCollide(enemy,this);
+				//consider slowing the enemy down a bit or something idk
 			}
 		});
 		if(this.x < 0) this.x = 0;
