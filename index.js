@@ -67,9 +67,11 @@ class Scene{
 		this.enemies = [];
 		this.faders = [];
 		this.hitFields = [];
+		this.spawners = [];
 		this.obstacles.push(new Obstacle(600,20,200,200));
 		this.obstacles.push(new Obstacle(100,240,700,50));
 		this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
+		this.spawners.push(new Spawner(0,10,600));
 		this.keys = [];
 		this.time = 0;
 		this.AI_DEBUG = false;
@@ -107,7 +109,10 @@ class Scene{
 			if(enemy.needsPath) enemy.setPath(this.width,this.height,this.obstacles,this.you,this.collide);
 			enemy.setDirection(this.you,this.collide);
 			enemy.move(this.obstacles,this.you,this.width,this.height);
-		})
+		});
+		this.spawners.forEach(spawner=>{
+			spawner.spawn(this.enemies);
+		});
 		this.bulletCollide();
 		this.handleInput();
 		this.checkBounds();
@@ -233,17 +238,6 @@ class Scene{
 			});
 		}
 
-		/*Draw you*/
-		ctx.save();
-		ctx.translate(canvas.width/2 + (you.width/2),canvas.height/2 + (you.height/2));
-		ctx.rotate(you.angle);
-		ctx.drawImage(you.img, you.width/-2,you.height/-2,you.width,you.height);
-		ctx.restore();
-
-		ctx.fillStyle = 'red';
-		ctx.fillRect(canvas.width/2,canvas.height/2 + you.height + 5, you.width,5);
-		ctx.fillStyle = 'green';
-		ctx.fillRect(canvas.width/2,canvas.height/2 + you.height + 5,you.width * you.hp/you.maxHp,5);
 
 
 		ctx.fillStyle = 'black';
@@ -258,6 +252,18 @@ class Scene{
 			let adjusted = this.cameraOffset(obstacle);
 			if(adjusted) ctx.fillRect(adjusted.x,adjusted.y,obstacle.width,obstacle.height);
 		});
+
+		/*Draw you*/
+		ctx.save();
+		ctx.translate(canvas.width/2 + (you.width/2),canvas.height/2 + (you.height/2));
+		ctx.rotate(you.angle);
+		ctx.drawImage(you.img, you.width/-2,you.height/-2,you.width,you.height);
+		ctx.restore();
+		ctx.fillStyle = 'red';
+		ctx.fillRect(canvas.width/2,canvas.height/2 + you.height + 5, you.width,5);
+		ctx.fillStyle = 'green';
+		ctx.fillRect(canvas.width/2,canvas.height/2 + you.height + 5,you.width * you.hp/you.maxHp,5);
+
 		ctx.strokeStyle = 'red';
 		this.enemies.forEach(enemy=>{
 			let adjusted = this.cameraOffset(enemy);
@@ -265,9 +271,9 @@ class Scene{
 				ctx.save();
 				ctx.translate(adjusted.x+enemy.width/2,adjusted.y+enemy.height/2);
 				ctx.rotate(enemy.angle);
-				ctx.fillStyle = 'red'; 
 				ctx.drawImage(enemy.img, -(enemy.width/2),-(enemy.height/2),enemy.width, enemy.height);
 				ctx.restore();
+				ctx.fillStyle = 'red'; 
 				ctx.fillRect(adjusted.x,adjusted.y + enemy.height + 5,enemy.width,5);
 				ctx.fillStyle = 'green';
 				ctx.fillRect(adjusted.x,adjusted.y + enemy.height + 5,enemy.width * enemy.hp/enemy.maxHp,5);
@@ -386,7 +392,6 @@ class Weapon{
 		for(let i = -this.spread/2;i<this.spread/2;i+=this.spread/this.flechettes){
 			let bullet = new Bullet(you.getCenter().x,you.getCenter().y,this.speed,this.damage,this.pierce,this.radius);
 			let randomSpray = Math.random()*this.spray*2 - this.spray;
-			console.log(randomSpray,this.spray);
 			bullet.setDirection(you.angle+i+randomSpray);
 			game.scene.bullets.push(bullet);
 		}
@@ -412,7 +417,7 @@ class You{
 		this.speed = 4;
 		this.width = 20;
 		this.height = 20;
-		this.weapon = new Weapon(15,Math.PI/8,Math.PI/32,5,2,10,10,2,5,30,true);
+		this.weapon = new Weapon(15,Math.PI/8,Math.PI/32,8,2,10,5,2,5,30,true);
 		this.shooting = false;
 		this.angle = 0;
 		this.img = img;
@@ -623,6 +628,20 @@ class Bullet {
 		this.y += this.speed * this.direction.y;
 	}
 
+}
+class Spawner{
+	constructor(x,y,speed){
+		this.x = x;
+		this.y = y;
+		this.speed = speed;
+		this.time = 0;
+	}
+	spawn(enemies){
+		if(this.time <= game.scene.time){
+			enemies.push(new Enemy(this.x,this.y,20,20,100,2,20,game.scene.sprites.enemy));
+			this.time = game.scene.time + this.speed;
+		}
+	}
 }
 let game;
 canvas.addEventListener('mousedown',(e)=>{
