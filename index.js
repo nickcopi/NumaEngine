@@ -14,8 +14,6 @@ class Game{
 		this.sprites.you.src = 'you.png';
 		this.settings = new Settings();
 		this.scene = new Scene(canvas.width/2,canvas.height/2,3000,3000,this.settings,this.sprites);
-		
-
 	}
 
 }
@@ -29,7 +27,7 @@ class Settings{
 	}
 }
 class AstarNode{
-	constructor(x,y,width,height){
+	constructor(x,y,width,height,wall){
 		this.x = x;
 		this.y = y;
 		this.width = width;
@@ -37,22 +35,44 @@ class AstarNode{
 		this.h = 0;
 		/*this.g = 0; // g is acquired score*/
 		this.f = 0;
-		this.wall = false;
+		this.wall = wall?true:false;
 		this.neighbors = [];
 	}
-	findNeighbors(grid){
-		let x = this.x;
-		let y = this.y;
-		let col = grid.length;
-		let row = grid[0].length;
-		if(x > 0) this.neighbors.push(grid[x-1][y]);
-		if(y > 0) this.neighbors.push(grid[x][y-1]);
-		if(x < col-1) this.neighbors.push(grid[x+1][y]);
-		if(y < row-1) this.neighbors.push(grid[x][y+1]);
-		if(x < col-1 && y > 0) this.neighbors.push(grid[x+1][y-1]);
-		if(x < col-1 && y < row-1) this.neighbors.push(grid[x+1][y+1]);
-		if(x > 0 && y > 0) this.neighbors.push(grid[x-1][y-1]);
-		if(x > 0 && y < row-1) this.neighbors.push(grid[x-1][y+1]);
+	clone(){
+		let clone = new AstarNode(this.x,this.y,this.width,this.height);
+		clone.wall = this.wall;
+		return clone;
+	}
+	findNeighbors(list,collide){
+		list.forEach(node=>{
+			if(collide({x:this.x-1,y:this.y,width:this.width,height:this.height},node)){
+				if(!this.neighbors.includes(node)) this.neighbors.push(node);
+			}
+			if(collide({x:this.x,y:this.y-1,width:this.width,height:this.height},node)){
+				if(!this.neighbors.includes(node)) this.neighbors.push(node);
+			}
+			if(collide({x:this.x+1,y:this.y,width:this.width,height:this.height},node)){
+				if(!this.neighbors.includes(node)) this.neighbors.push(node);
+			}
+			if(collide({x:this.x,y:this.y+1,width:this.width,height:this.height},node)){
+				if(!this.neighbors.includes(node)) this.neighbors.push(node);
+			}
+			/*if(collide({x:this.x+1,y:this.y-1,width:this.width,height:this.height},node)){
+				if(!this.neighbors.includes(node)) this.neighbors.push(node);
+			}
+			if(collide({x:this.x+1,y:this.y+1,width:this.width,height:this.height},node)){
+				if(!this.neighbors.includes(node)) this.neighbors.push(node);
+			}
+			if(collide({x:this.x-1,y:this.y-1,width:this.width,height:this.height},node)){
+				if(!this.neighbors.includes(node)) this.neighbors.push(node);
+			}
+			if(collide({x:this.x,y:this.y+1,width:this.width,height:this.height},node)){
+				if(!this.neighbors.includes(node)) this.neighbors.push(node);
+			}*/
+		});
+	}
+	getArea(){
+		return this.width*this.height;
 	}
 }
 
@@ -68,15 +88,17 @@ class Scene{
 		this.faders = [];
 		this.hitFields = [];
 		this.spawners = [];
-		this.obstacles.push(new Obstacle(600,20,200,200));
-		this.obstacles.push(new Obstacle(100,240,700,50));
-		this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
-		this.spawners.push(new Spawner(0,10,600));
 		this.keys = [];
 		this.time = 0;
 		this.AI_DEBUG = false;
 		this.HIT_DEBUG = false;
 		this.gridLines = [];
+		this.initMap();
+		this.tileCutter = new TileCutter(this.width,this.height,this.obstacles);
+		this.tileCutter.calcOutlines();
+		this.tileCutter.tiles.forEach(tile=>{
+			tile.findNeighbors(this.tileCutter.tiles,this.collide);
+		});
 		this.bg = new Background(0,0,width,height,this.sprites.bg);
 		for(let i = 0; i < width/50;i++){
 			this.gridLines.push(new Obstacle(i * (width/50),0,1,width));
@@ -85,8 +107,7 @@ class Scene{
 			this.gridLines.push(new Obstacle(0,i * (height/50),height,1));
 		}
 		this.you = new You(youX,youY,this.sprites.you);
-		//this.nodePath = this.enemies[0].setPath(this.width,this.height,this.obstacles,this.you,this.collide);
-		setInterval(()=>{
+		this.interval = setInterval(()=>{
 			this.update();
 			this.render();
 		},1000/60);
@@ -106,7 +127,16 @@ class Scene{
 			return hitField.active;
 		});
 		this.enemies.forEach(enemy=>{
-			if(enemy.needsPath) enemy.setPath(this.width,this.height,this.obstacles,this.you,this.collide);
+			if(enemy.needsPath){
+				let tiles = [];
+				this.tileCutter.tiles.forEach(tile=>{
+					tiles.push(tile.clone());
+				});
+				tiles.forEach(tile=>{
+					tile.findNeighbors(tiles,this.collide);
+				});
+				enemy.setPath(this.width,this.height,this.obstacles,this.you,this.collide,tiles);
+			}
 			enemy.setDirection(this.you,this.collide);
 			enemy.move(this.obstacles,this.you,this.width,this.height);
 		});
@@ -116,6 +146,12 @@ class Scene{
 		this.bulletCollide();
 		this.handleInput();
 		this.checkBounds();
+	}
+	initMap(){
+		this.obstacles.push(new Obstacle(600,20,200,200));
+		this.obstacles.push(new Obstacle(100,240,700,50));
+		this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
+		//this.spawners.push(new Spawner(0,10,600));
 	}
 	fadeFaders(){
 		this.faders = this.faders.filter(fader=>{
@@ -231,10 +267,10 @@ class Scene{
 		if(adjusted) ctx.drawImage(this.bg.img,adjusted.x,adjusted.y,this.bg.width,this.bg.height);
 
 		if(this.AI_DEBUG){
-			ctx.fillStyle = 'white';
-			this.gridLines.forEach(line=>{
+			ctx.strokeStyle = 'white';
+			this.tileCutter.tiles.forEach(line=>{
 				let adjusted = this.cameraOffset(line);
-				if(adjusted) ctx.fillRect(adjusted.x,adjusted.y,line.width,line.height);
+				if(adjusted) ctx.strokeRect(adjusted.x,adjusted.y,line.width,line.height);
 			});
 		}
 
@@ -501,6 +537,7 @@ class Enemy{
 		if(this.path.length <= 0)
 			this.needsPath = true;
 		if(collide(pos,this)){
+			console.log('hit')
 			this.needsPath = true;
 			this.path.pop();
 		}
@@ -508,16 +545,52 @@ class Enemy{
 	loadPath(endNode){
 		this.needsPath = false;
 		let node = endNode.parent;
+		let collide = game.scene.collide;
 		this.path = [];
+		let it = 0;
 		while(node){
-			this.path.push(new Obstacle(node.x * node.width, node.y * node.height, 5, 5));
+			let point = {}
+			let r1 = node.parent;
+			let r2 = node;
+			let r;	
+			if(!r1){
+				point.x = r2.x;
+				point.y = r2.y;
+			} else {
+				if(collide({x:r1.x,y:r1.y-1,width:r1.width,height:r1.height},r2)){
+					r = r1.width > r2.width?r2:r1;
+					point.x = r.x + r.width/2;
+					point.y = r.y + ((r === r2)?r.height:0);
+					point.y-=2;
+				}
+				else if(collide({x:r1.x,y:r1.y+1,width:r1.width,height:r1.height},r2)){
+					r = r1.width > r2.width?r2:r1;
+					point.x = r.x + r.width/2;
+					point.y = r.y + ((r === r1)?r.height:0);
+				}
+				else if(collide({x:r1.x-1,y:r1.y,width:r1.width,height:r1.height},r2)){
+					r = r1.height > r2.height?r2:r1;
+					point.x = r.x + ((r === r2)?r.width:0);
+					point.y = r.y+r.height/2;
+					point.x-=2;
+				}
+				else if(collide({x:r1.x+1,y:r1.y,width:r1.width,height:r1.height},r2)){
+					r = r1.height > r2.height?r2:r1;
+					point.x = r.x + ((r === r1)?r.width:0);
+					point.y = r.y+r.height/2;
+				}
+			}
+			this.path.push(new Obstacle(point.x, point.y, 1, 1));
 			node = node.parent;
+			it++;
 		}
 		this.path.pop();
+		console.log(this.path.length)
 	}
-	setPath(width,height,obstacles,you,collide){
-		return;
-		let col = 50;
+	setPath(width,height,obstacles,you,collide,tiles){
+		//if(game.scene.time > 1) return;
+		if(!game.scene.AI_DEBUG) return;
+		/*let col = 50;
 		let row = 50;
 		let unitWidth = width/col;
 		let unitHeight = height/row;
@@ -540,9 +613,17 @@ class Enemy{
 			for(let y = 0; y < grid[x].length; y++){
 				grid[x][y].findNeighbors(grid);
 			}
-		}
-		let start = grid[Math.floor(this.x/unitWidth)][Math.floor(this.y/unitHeight)];
-		let end = grid[Math.floor(you.x/unitWidth)][Math.floor(you.y/unitHeight)];
+		}*/
+		let start;
+		let end;
+		tiles.forEach(tile=>{
+			if(collide({x:this.x,y:this.y,width:1,height:1},tile)){
+				start = tile;
+			}
+			if(collide({x:you.x,y:you.y,width:1,height:1},tile)){
+				end = tile;
+			}
+		});
 		let openSet = [start];
 		let closedSet = [];
 		let dist = this.dist;
@@ -565,9 +646,9 @@ class Enemy{
 				let neighbor = current.neighbors[i];
 				if(closedSet.includes(neighbor) || neighbor.wall)
 					continue;
-				let nonDiagonal = current.x == neighbor.x || current.y == neighbor.y;
+				//let nonDiagonal = current.x == neighbor.x || current.y == neighbor.y;
 				let tempG = current.g === undefined?0:current.g;
-				tempG += nonDiagonal?1:Math.sqrt(2);
+				tempG += dist(current.x,current.y,neighbor.x,neighbor.y);
 				if(!openSet.includes(neighbor)){
 					openSet.push(neighbor);
 				} else {
