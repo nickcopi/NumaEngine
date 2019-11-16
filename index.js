@@ -290,29 +290,14 @@ class Scene{
 		});
 
 		/*Draw you*/
-		ctx.save();
-		ctx.translate(canvas.width/2 + (you.width/2),canvas.height/2 + (you.height/2));
-		ctx.rotate(you.angle);
-		ctx.drawImage(you.img, you.width/-2,you.height/-2,you.width,you.height);
-		ctx.restore();
-		ctx.fillStyle = 'red';
-		ctx.fillRect(canvas.width/2,canvas.height/2 + you.height + 5, you.width,5);
-		ctx.fillStyle = 'green';
-		ctx.fillRect(canvas.width/2,canvas.height/2 + you.height + 5,you.width * you.hp/you.maxHp,5);
+		this.you.render(ctx,canvas);
+
 
 		ctx.strokeStyle = 'red';
 		this.enemies.forEach(enemy=>{
 			let adjusted = this.cameraOffset(enemy);
 			if(adjusted){
-				ctx.save();
-				ctx.translate(adjusted.x+enemy.width/2,adjusted.y+enemy.height/2);
-				ctx.rotate(enemy.angle);
-				ctx.drawImage(enemy.img, -(enemy.width/2),-(enemy.height/2),enemy.width, enemy.height);
-				ctx.restore();
-				ctx.fillStyle = 'red'; 
-				ctx.fillRect(adjusted.x,adjusted.y + enemy.height + 5,enemy.width,5);
-				ctx.fillStyle = 'green';
-				ctx.fillRect(adjusted.x,adjusted.y + enemy.height + 5,enemy.width * enemy.hp/enemy.maxHp,5);
+				enemy.render(ctx,adjusted);
 			}
 			if(this.AI_DEBUG){
 				ctx.beginPath();
@@ -335,9 +320,8 @@ class Scene{
 		}
 		ctx.fillStyle = 'black'; 
 		this.faders.forEach((fader)=>{
-			ctx.globalAlpha = fader.opacity;
 			let adjusted = this.cameraOffset(fader);
-			if(adjusted) ctx.fillText(fader.text,adjusted.x,adjusted.y+10);
+			fader.render(ctx,adjusted);
 
 		});
 		ctx.globalAlpha = 1;
@@ -362,21 +346,6 @@ class Waypoint{
 	}
 }
 
-class HitText{
-	constructor(x,y,text){
-		this.opacity = 1;
-		this.x = x;
-		this.y = y;
-		this.text = text;
-	}
-	fade(){
-		this.opacity -= (1/70);	
-	}
-	alive(){
-		return this.opacity > 0;
-	}
-}
-
 class HitField{
 	constructor(x,y,width,height,dmg){
 		this.x = x;
@@ -392,8 +361,10 @@ class HitField{
 			this.active = false;
 			target.damage(this.dmg);
 		}
-	}
+    }
+    
 }
+
 
 class Background{
 	constructor(x,y,width,height,img){
@@ -405,325 +376,7 @@ class Background{
 	}
 }
 
-class Weapon{
-	constructor(speed,spread,spray,flechettes,pierce,fireDelay,damage,radius, capacity, reload,auto){
-		this.speed = speed;
-		this.spread = spread;
-		this.spray = spray
-		this.flechettes = flechettes;
-		this.pierce = pierce;
-		this.fireDelay = fireDelay;
-		this.damage = damage;
-		this.radius = radius;
-		this.timeout = 0;
-		this.capacity = capacity;
-		this.reloadBase = reload;
-		this.auto = auto;
-		this.mag = capacity;
-		this.reloading = false;
-	} 
-	shoot(you,x,y){
-		if(this.timeout > game.scene.time || this.reloading)
-			return;
-		for(let i = -this.spread/2;i<this.spread/2;i+=this.spread/this.flechettes){
-			let bullet = new Bullet(you.getCenter().x,you.getCenter().y,this.speed,this.damage,this.pierce,this.radius);
-			let randomSpray = Math.random()*this.spray*2 - this.spray;
-			bullet.setDirection(you.angle+i+randomSpray);
-			game.scene.bullets.push(bullet);
-		}
-		this.mag--;
-		if(this.mag === 0){
-			this.reloadTime = game.scene.time + this.reloadBase;
-			this.reloading = true;
-		}
-		this.timeout = game.scene.time + this.fireDelay;
-	}
-	reload(){
-		if(this.reloadTime <= game.scene.time){
-			this.mag = this.capacity;
-			this.reloading = false;
-		}
-	}
-}
 
-class You{
-	constructor(x,y,img){
-		this.x = x;
-		this.y = y;
-		this.speed = 4;
-		this.width = 20;
-		this.height = 20;
-		this.weapon = new Weapon(15,Math.PI/8,Math.PI/32,8,2,10,5,2,5,30,true);
-		this.shooting = false;
-		this.angle = 0;
-		this.img = img;
-		this.maxHp = 100;
-		this.hp = 100;
-	}
-	getCenter(){
-		return {
-			x: this.x+this.width/2,
-			y: this.y+this.height/2
-		}
-	}
-	damage(dmg){
-		this.hp -= dmg;
-		if(this.hp <= 0)
-			return; /*handle player death*/
-	}
-	shoot(){
-		if(this.shooting){
-			if(!this.weapon.auto)
-				this.shooting = false;
-			this.weapon.shoot(this,this.aimX, this.aimY);
-		}
-	}
-	setAngle(e){
-		let x = e.offsetX - canvas.width/2;
-		let y = e.offsetY - canvas.height/2;
-		let xPos = x > 0;
-		let yPos = y > 0;
-		let theta = Math.atan(Math.abs(y)/Math.abs(x));
-		if(xPos && !yPos) theta = Math.PI/2 * 3 + (Math.PI/2 - theta);
-		if(!xPos && !yPos) theta = Math.PI/2 * 2 + (theta);
-		if(!xPos && yPos) theta = Math.PI/2 + (Math.PI/2 - theta);
-		this.angle = theta;
-	}
-}
-
-class Enemy{
-	constructor(x,y,width,height,hp,speed,dmg,img){
-		this.x = x;
-		this.y = y;
-		this.width = width;
-		this.height = height;
-		this.speed = speed;
-		this.dmg = dmg;
-		this.hp = hp;
-		this.maxHp = this.hp;
-		this.img = img;
-		this.id = Math.random() * Math.random();
-		this.angle = 0;
-		this.direction = {};
-		this.path = [];
-		this.needsPath = true;
-		this.attackTime = 0;
-		this.attackSpeed = 60;
-		this.slowed = 0;
-	}
-	attack(time,hitFields){
-		if(this.attackTime > time) return;
-		this.attackTime = time + this.attackSpeed;
-		this.activeHit = new HitField(this.x+this.width/2 + this.width/2*Math.cos(this.angle),this.y+this.height/2+ this.height/2*Math.sin(this.angle),this.width,this.height,this.dmg);
-		hitFields.push(this.activeHit);
-	}
-	setDirection(you, collide){
-		let pos = this.path[this.path.length-1];
-		if(!pos)
-			pos = you;
-		let x = pos.x;
-		let y = pos.y;
-		x -= this.x;
-		y -= this.y;
-		let xPos = x > 0;
-		let yPos = y > 0;
-		let theta = Math.atan(Math.abs(y)/Math.abs(x));
-		if(xPos && !yPos) theta = Math.PI/2 * 3 + (Math.PI/2 - theta);
-		if(!xPos && !yPos) theta = Math.PI/2 * 2 + (theta);
-		if(!xPos && yPos) theta = Math.PI/2 + (Math.PI/2 - theta);
-		this.direction.x = Math.cos(theta);
-		this.direction.y = Math.sin(theta);	
-		this.angle = theta;
-		if(this.path.length <= 0)
-			this.needsPath = true;
-		if(collide(pos,this)){
-			console.log('hit')
-			this.needsPath = true;
-			this.path.pop();
-		}
-	}
-	loadPath(endNode){
-		this.needsPath = false;
-		let node = endNode.parent;
-		let collide = game.scene.collide;
-		this.path = [];
-		let it = 0;
-		while(node){
-			let point = {}
-			let r1 = node.parent;
-			let r2 = node;
-			let r;	
-			if(!r1){
-				point.x = r2.x;
-				point.y = r2.y;
-			} else {
-				if(collide({x:r1.x,y:r1.y-1,width:r1.width,height:r1.height},r2)){
-					r = r1.width > r2.width?r2:r1;
-					point.x = r.x + r.width/2;
-					point.y = r.y + ((r === r2)?r.height:0);
-					point.y-=2;
-				}
-				else if(collide({x:r1.x,y:r1.y+1,width:r1.width,height:r1.height},r2)){
-					r = r1.width > r2.width?r2:r1;
-					point.x = r.x + r.width/2;
-					point.y = r.y + ((r === r1)?r.height:0);
-				}
-				else if(collide({x:r1.x-1,y:r1.y,width:r1.width,height:r1.height},r2)){
-					r = r1.height > r2.height?r2:r1;
-					point.x = r.x + ((r === r2)?r.width:0);
-					point.y = r.y+r.height/2;
-					point.x-=2;
-				}
-				else if(collide({x:r1.x+1,y:r1.y,width:r1.width,height:r1.height},r2)){
-					r = r1.height > r2.height?r2:r1;
-					point.x = r.x + ((r === r1)?r.width:0);
-					point.y = r.y+r.height/2;
-				}
-			}
-			this.path.push(new Obstacle(point.x, point.y, 1, 1));
-			node = node.parent;
-			it++;
-		}
-		this.path.pop();
-		console.log(this.path.length)
-	}
-	setPath(width,height,obstacles,you,collide,tiles){
-		//if(game.scene.time > 1) return;
-		if(!game.scene.AI_DEBUG) return;
-		/*let col = 50;
-		let row = 50;
-		let unitWidth = width/col;
-		let unitHeight = height/row;
-		let grid = new Array(col);
-		for(let i = 0;i < grid.length; i++){
-			grid[i] = new Array(row);
-		}
-		for(let x = 0; x < grid.length; x++){
-			for(let y = 0; y < grid[x].length; y++){
-				grid[x][y] = new AstarNode(x,y,unitWidth,unitHeight);
-				for(let i = 0; i < obstacles.length; i++){
-					let fakeNode = {x:x*unitWidth,y:y*unitHeight,width:unitWidth,height:unitHeight};
-					if(collide(fakeNode,obstacles[i])){
-						grid[x][y].wall = true;
-					} 
-				}
-			}
-		}
-		for(let x = 0; x < grid.length; x++){
-			for(let y = 0; y < grid[x].length; y++){
-				grid[x][y].findNeighbors(grid);
-			}
-		}*/
-		let start;
-		let end;
-		tiles.forEach(tile=>{
-			if(collide({x:this.x,y:this.y,width:1,height:1},tile)){
-				start = tile;
-			}
-			if(collide({x:you.x,y:you.y,width:1,height:1},tile)){
-				end = tile;
-			}
-		});
-		let openSet = [start];
-		let closedSet = [];
-		let dist = this.dist;
-		end.wall = false;
-		while(openSet.length > 0){
-			let winner = 0;
-			openSet.forEach((open,i)=>{
-				if(open.f < openSet[winner].f){
-					winner = i;
-				}
-			});
-			let current = openSet[winner];
-			if(current === end) {
-				this.loadPath(current);
-				return current;
-			}
-			openSet = openSet.filter(i=>i!=current);
-			closedSet.push(current);
-			for(let i = 0; i < current.neighbors.length;i++){
-				let neighbor = current.neighbors[i];
-				if(closedSet.includes(neighbor) || neighbor.wall)
-					continue;
-				//let nonDiagonal = current.x == neighbor.x || current.y == neighbor.y;
-				let tempG = current.g === undefined?0:current.g;
-				tempG += dist(current.x,current.y,neighbor.x,neighbor.y);
-				if(!openSet.includes(neighbor)){
-					openSet.push(neighbor);
-				} else {
-					if(tempG >= neighbor.g)
-						continue;
-				}
-				neighbor.parent = current;
-				neighbor.g = tempG;
-				neighbor.f = tempG + dist(neighbor.x,neighbor.y,end.x,end.y);
-				//console.log(tempG)
-			}
-		}
-	}
-	move(obstacles,you,width,height){
-		if(this.attackTime > game.scene.time) return;
-		if(this.attackTime === game.scene.time && this.activeHit)
-			this.activeHit.active = false;
-		if(this.dist(this.x,this.y,you.x,you.y) <= this.width){
-			this.attack(game.scene.time,game.scene.hitFields);
-			return;
-		}
-		let speed = this.speed;
-		if(this.slowed > game.scene.time) speed /= 2;
-		this.x += speed * this.direction.x;
-		this.y += speed * this.direction.y;
-		obstacles.forEach(obstacle=>{
-			if(game.scene.collide(obstacle,this)){
-				game.scene.backOffCollide(obstacle,this);
-			}
-		});
-		game.scene.enemies.forEach(enemy=>{
-			if(game.scene.collide(enemy,this)){
-				//console.log(enemy.slowed, game.scene.time)
-				if(enemy.slowed <= game.scene.time){
-
-					this.slowed = game.scene.time + 20;
-				}
-				//game.scene.backOffCollide(enemy,this);
-				//consider slowing the enemy down a bit or something idk
-			}
-		});
-		if(this.x < 0) this.x = 0;
-		if(this.y < 0) this.y = 0;
-		if(this.x + this.width > width) this.x = width - this.width;
-		if(this.y + this.height > height) this.y = height - this.height;
-	}
-	dist(x1,y1,x2,y2){
-		return Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2));
-	}
-}
-
-class Bullet {
-	constructor(x,y,speed,damage,pierce,radius){
-		this.x = x;
-		this.y = y;
-		this.width = radius;
-		this.height = radius;
-		this.speed = speed;
-		this.damage = damage;
-		this.pierce = pierce;
-		this.hits = [];
-		this.angle = 0;
-		this.direction = {};
-	}
-	setDirection(theta){
-		this.direction.x = Math.cos(theta);
-		this.direction.y = Math.sin(theta);	
-		this.angle = theta;
-	}
-	move(){
-		this.x += this.speed * this.direction.x;
-		this.y += this.speed * this.direction.y;
-	}
-
-}
 class Spawner{
 	constructor(x,y,speed){
 		this.x = x;
