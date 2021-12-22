@@ -131,7 +131,7 @@ class Scene{
 		this.obstacles.push(new Obstacle(100,240,700,50));
 		this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
 		//this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
-		//this.spawners.push(new Spawner(0,10,600));
+		this.spawners.push(new Spawner(0,10,600));
 		this.astarGrid.initGrid(this.width,this.height,this.obstacles,this.collide);
 	}
 	fadeFaders(){
@@ -282,11 +282,11 @@ class Scene{
 			}
 			if(this.AI_DEBUG){
 				ctx.beginPath();
-				ctx.lineTo(canvas.width/2,canvas.height/2)
+				ctx.lineTo(canvas.width/2 + you.width/2,canvas.height/2+you.height/2)
 				enemy.path.forEach(path=>{
 					let adjusted = this.cameraOffset(path);
 					if(adjusted){ 
-						ctx.lineTo(adjusted.x,adjusted.y);
+						ctx.lineTo(adjusted.x+path.width/2,adjusted.y+path.height/2);
 						ctx.fillStyle = 'red';
 						ctx.fillRect(adjusted.x,adjusted.y,path.width,path.height);
 					}

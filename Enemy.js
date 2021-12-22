@@ -55,7 +55,7 @@ class Enemy extends Obstacle{
 		let it = 0;
 		while(node){
 			const waypointSize = 5;
-			this.path.push(new Obstacle(node.x * node.width - waypointSize/2, node.y * node.height + node.width/2 - waypointSize/2, waypointSize, waypointSize));
+			this.path.push(new Obstacle(node.x * node.width +node.width/2 - waypointSize/2, node.y * node.height + node.height/2 - waypointSize/2, waypointSize, waypointSize));
 			const oldNode = node;
 			node = node.parent;
 			oldNode.parent = undefined;
