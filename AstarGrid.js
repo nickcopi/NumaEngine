@@ -42,6 +42,17 @@ class AstarGrid{
 	getPos(x,y){
 		return this.grid[Math.floor(x/this.unitWidth)][Math.floor(y/this.unitHeight)];
 	}
+	isWall(x,y){
+		const node = this.getNode(x,y);
+		if(node)
+			return node.wall;
+		return true;
+	}
+	getNode(x,y){
+		if(x < 0 || x >= this.grid.length) return;
+		if(y < 0 || y >= this.grid[0].length) return;
+		return this.grid[x][y];
+	}
 	getDistance(node1,node2){
 		return Math.sqrt(Math.pow(node2.x*this.unitWidth-node1.x*this.unitWidth,2)+Math.pow(node2.y*this.unitHeight-node1.y*this.unitHeight,2));
 	}
