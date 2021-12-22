@@ -112,9 +112,51 @@ class Enemy extends Obstacle{
 		}
 		end.wall = oldEndWall;
 	}
+	findNeighbors(node,grid){
+		if(!node.parent) return node.neighbors;
+		const neighbors = [];
+		const x = node.x;
+		const y = node.y;
+		const dX = (x - node.parent.x)/Math.max(Math.abs(x-node.parent.x),1);
+		const dY = (y - node.parent.y)/Math.max(Math.abs(y-node.parent.y),1);
+		if(dX && dY){
+			let walkX,walkY;
+			if(!grid.isWall(x,y+dY)){
+				neighbors.push(grid.getNode(x,y+dY));
+				walkY = true;
+			}
+			if(!grid.isWall(x+dX,y)){
+				neighbors.push(grid.getNode(x+dX,y));
+				walkX = true;
+			}
+			if(walkY || walkX)
+				neighbors.push(grid.getNode(x+dX,y+dY));
+			if(grid.isWall(x-dX,y) && walkY)
+				neighbors.push(grid.getNode(x-dX,y+dY));
+			if(grid.isWall(x,y-dY) && walkX)
+				neighbors.push(grid.getNode(x+dX,y-dY));
+		} else {
+			if(dY){
+				if(!grid.isWall(x,y+dY))
+					neighbors.push(grid.getNode(x,y+dY));
+				if(grid.isWall(x+1,y))
+					neighbors.push(grid.getNode(x+1,y+dY));
+				if(grid.isWall(x-1,y))
+					neighbors.push(grid.getNode(x-1,y+dY));
+			} else {
+				if(!grid.isWall(x+dX,y))
+					neighbors.push(grid.getNode(x,y+dY));
+				if(grid.isWall(x,y+1))
+					neighbors.push(grid.getNode(x+dX,y+1));
+				if(grid.isWall(x,y-1))
+					neighbors.push(grid.getNode(x+dX,y-1));
+			}
+		}
+		return neighbors;
+	}
 	findSuccessors(current,end,grid){
 		const successors = [];
-		current.neighbors.forEach(neighbor=>{
+		this.findNeighbors(current,grid).forEach(neighbor=>{
 			let dX = neighbor.x - current.x;
 			if(dX < -1) dX = -1;
 			if(dX > 1) dX = 1;
