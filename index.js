@@ -41,6 +41,13 @@ class AstarNode{
 	clone(){
 		return new AstarNode(this.x,this.y,this.width,this.height,this.wall);
 	}
+	reset(){
+		this.f = 0;
+		this.g = undefined;
+		this.parent = undefined
+		this.open = undefined;
+		this.closed = undefined;
+	}
 	findNeighbors(grid){
 		let x = this.x;
 		let y = this.y;

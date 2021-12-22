@@ -34,9 +34,7 @@ class AstarGrid{
 	}
 	clear(){
 		this.grid.forEach(line=>line.forEach(node=>{
-			node.f = 0;
-			node.g = undefined;
-			node.parent = undefined
+			node.reset();
 		}));
 	}
 	getPos(x,y){

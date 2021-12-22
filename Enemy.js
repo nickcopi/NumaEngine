@@ -63,15 +63,18 @@ class Enemy extends Obstacle{
 		this.path.pop();
 		console.log(this.path.length)
 	}
+	clearNodes(list){
+		list.forEach(node=>node.reset());
+	}
 	setPath(you,grid){
 		//if(game.scene.time > 1) return;
 		if(!game.scene.AI_DEBUG) return;
 		if(this.dist(you.x,you.y,this.x,this.y) > this.maxPathDistance) return;
 		let start = grid.getPos(this.x+this.width/2,this.y+this.height/2);
 		let end = grid.getPos(you.x+you.width/2,you.y+you.height/2);
-		grid.clear();
 		let openSet = [start];
-		let closedSet = new Set();
+		const toClear = [start];
+		start.open = true;
 		let dist = this.dist;
 		const oldEndWall = end.wall;
 		end.wall = false;
@@ -86,24 +89,27 @@ class Enemy extends Obstacle{
 			if(current === end) {
 				end.wall = oldEndWall;
 				this.loadPath(current);
+				this.clearNodes(toClear);
 				return current;
 			}
 			openSet = openSet.filter(i=>i!=current);
-			closedSet.add(`${current.x},${current.y}`);
+			current.open = undefined;
+			current.closed = true;
 			//const successors = this.findSuccessors(current,end,grid);
 			const successors = current.neighbors;
 			for(let i = 0; i < successors.length;i++){
 				let neighbor = successors[i];
-				if(closedSet.has(`${neighbor.x},${neighbor.y}`) || neighbor.wall || grid.getDistance(start,current) > this.maxPathDistance)
+				if(neighbor.closed || neighbor.wall || grid.getDistance(start,current) > this.maxPathDistance)
 					continue;
-				//let nonDiagonal = current.x == neighbor.x || current.y == neighbor.y;
 				let tempG = current.g === undefined?0:current.g;
 				tempG += dist(current.x,current.y,neighbor.x,neighbor.y);
 				if(tempG >= neighbor.g)
 					continue;
-				if(!openSet.includes(neighbor)){
+				if(!neighbor.open){
+					neighbor.open = true;
 					openSet.push(neighbor);
 				}
+				toClear.push(neighbor);
 				neighbor.parent = current;
 				neighbor.g = tempG;
 				neighbor.f = tempG + dist(neighbor.x,neighbor.y,end.x,end.y);
@@ -111,6 +117,7 @@ class Enemy extends Obstacle{
 			}
 		}
 		end.wall = oldEndWall;
+		this.clearNodes(toClear);
 	}
 	findNeighbors(node,grid){
 		if(!node.parent) return node.neighbors;
