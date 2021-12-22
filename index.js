@@ -77,7 +77,7 @@ class Scene{
 		this.time = 0;
 		this.AI_DEBUG = true;
 		this.HIT_DEBUG = false;
-		this.gridSize = 100;
+		this.gridSize = 200;
 		this.gridLines = [];
 		this.astarGrid = new AstarGrid(this.gridSize);
 		this.initMap();
@@ -285,12 +285,17 @@ class Scene{
 				ctx.lineTo(canvas.width/2,canvas.height/2)
 				enemy.path.forEach(path=>{
 					let adjusted = this.cameraOffset(path);
-					if(adjusted) ctx.lineTo(adjusted.x,adjusted.y);
+					if(adjusted){ 
+						ctx.lineTo(adjusted.x,adjusted.y);
+						ctx.fillStyle = 'red';
+						ctx.fillRect(adjusted.x,adjusted.y,path.width,path.height);
+					}
 				});
 				if(adjusted) ctx.lineTo(adjusted.x,adjusted.y);
 				ctx.stroke();
 			}
 		});
+		ctx.fillStyle = 'green';
 		if(this.HIT_DEBUG){
 			ctx.globalAlpha = .2;
 			this.hitFields.forEach(hitField=>{
@@ -315,6 +320,12 @@ class Obstacle{
 		this.y = y;
 		this.width = width;
 		this.height = height;
+	}
+	getCenterX(){
+		return this.x + this.width/2;
+	}
+	getCenterY(){
+		return this.y + this.height/2;
 	}
 }
 

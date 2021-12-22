@@ -1,9 +1,6 @@
-class Enemy{
+class Enemy extends Obstacle{
 	constructor(x,y,width,height,hp,speed,dmg,img){
-		this.x = x;
-		this.y = y;
-		this.width = width;
-		this.height = height;
+		super(x,y,width,height);
 		this.speed = speed;
 		this.dmg = dmg;
 		this.hp = hp;
@@ -29,10 +26,10 @@ class Enemy{
 		let pos = this.path[this.path.length-1];
 		if(!pos)
 			pos = you;
-		let x = pos.x;
-		let y = pos.y;
-		x -= this.x;
-		y -= this.y;
+		let x = pos.getCenterX();
+		let y = pos.getCenterY();
+		x -= this.getCenterX();
+		y -= this.getCenterY();
 		let xPos = x > 0;
 		let yPos = y > 0;
 		let theta = Math.atan(Math.abs(y)/Math.abs(x));
@@ -57,7 +54,8 @@ class Enemy{
 		this.path = [];
 		let it = 0;
 		while(node){
-			this.path.push(new Obstacle(node.x * node.width, node.y * node.height, 5, 5));
+			const waypointSize = 5;
+			this.path.push(new Obstacle(node.x * node.width - waypointSize/2, node.y * node.height + node.width/2 - waypointSize/2, waypointSize, waypointSize));
 			const oldNode = node;
 			node = node.parent;
 			oldNode.parent = undefined;
@@ -126,6 +124,7 @@ class Enemy{
 		this.y += speed * this.direction.y;
 		obstacles.forEach(obstacle=>{
 			if(game.scene.collide(obstacle,this)){
+				this.needsPath = true;
 				game.scene.backOffCollide(obstacle,this);
 			}
 		});

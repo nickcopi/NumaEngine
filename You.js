@@ -1,10 +1,7 @@
-class You{
+class You extends Obstacle{
 	constructor(x,y,img){
-		this.x = x;
-		this.y = y;
+		super(x,y,20,20);
 		this.speed = 4;
-		this.width = 20;
-		this.height = 20;
 		this.weapon = new Weapon(15,Math.PI/8,Math.PI/32,8,2,10,5,2,5,30,true);
 		this.shooting = false;
 		this.angle = 0;
