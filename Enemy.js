@@ -68,7 +68,7 @@ class Enemy extends Obstacle{
 	}
 	setPath(you,grid){
 		//if(game.scene.time > 1) return;
-		if(!game.scene.AI_DEBUG) return;
+		//if(!game.scene.AI_DEBUG) return;
 		if(this.dist(you.x,you.y,this.x,this.y) > this.maxPathDistance) return;
 		let start = grid.getPos(this.x+this.width/2,this.y+this.height/2);
 		let end = grid.getPos(you.x+you.width/2,you.y+you.height/2);
@@ -95,8 +95,8 @@ class Enemy extends Obstacle{
 			openSet = openSet.filter(i=>i!=current);
 			current.open = undefined;
 			current.closed = true;
-			//const successors = this.findSuccessors(current,end,grid);
-			const successors = current.neighbors;
+			const successors = this.findSuccessors(current,end,grid);
+			//const successors = current.neighbors;
 			for(let i = 0; i < successors.length;i++){
 				let neighbor = successors[i];
 				if(neighbor.closed || neighbor.wall || grid.getDistance(start,current) > this.maxPathDistance)

@@ -298,7 +298,7 @@ class Scene{
 						ctx.fillRect(adjusted.x,adjusted.y,path.width,path.height);
 					}
 				});
-				if(adjusted) ctx.lineTo(adjusted.x,adjusted.y);
+				if(adjusted) ctx.lineTo(adjusted.x+enemy.width/2,adjusted.y+enemy.height/2);
 				ctx.stroke();
 			}
 		});
