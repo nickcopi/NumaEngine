@@ -131,7 +131,7 @@ class Scene{
 		this.obstacles.push(new Obstacle(100,240,700,50));
 		this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
 		//this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
-		this.spawners.push(new Spawner(0,10,600));
+		//this.spawners.push(new Spawner(0,10,600));
 		this.astarGrid.initGrid(this.width,this.height,this.obstacles,this.collide);
 	}
 	fadeFaders(){

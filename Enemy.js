@@ -90,9 +90,10 @@ class Enemy extends Obstacle{
 			}
 			openSet = openSet.filter(i=>i!=current);
 			closedSet.add(`${current.x},${current.y}`);
-			const succesors = current.neighbors;//this.findSuccessors(current,end,grid);
-			for(let i = 0; i < succesors.length;i++){
-				let neighbor = current.neighbors[i];
+			//const successors = this.findSuccessors(current,end,grid);
+			const successors = current.neighbors;
+			for(let i = 0; i < successors.length;i++){
+				let neighbor = successors[i];
 				if(closedSet.has(`${neighbor.x},${neighbor.y}`) || neighbor.wall || grid.getDistance(start,current) > this.maxPathDistance)
 					continue;
 				//let nonDiagonal = current.x == neighbor.x || current.y == neighbor.y;
@@ -120,31 +121,43 @@ class Enemy extends Obstacle{
 			let dY = neighbor.y - current.y;
 			if(dY < -1) dY = -1;
 			if(dY > 1) dY = 1;
-			const jumpPoint = this.jumpPath(current,dX,dY,end,grid);
+			const next = grid.getNode(neighbor.x + dX, neighbor.y + dY);
+			const jumpPoint = this.jumpPath(next,neighbor,end,grid);
 			if(jumpPoint) successors.push(jumpPoint);
 		});
 		return successors;
 	}
-	jumpPath(current,dX,dY,end,grid){
-		const x = current.x + dX;
-		const y = current.y + dY;
-		const next = grid.getNode(x,y);
+	jumpPath(next,parent,end,grid){
 		if(!next) return;
-		if(next.wall) return current;
+		const x = next.x
+		const y = next.y
+		const dX = next.x - parent.x;
+		const dY = next.y - parent.y;
+		if(next.wall) return;
 		if(next === end) return end;
 		if(dX !== 0 && dY !== 0){
 			if((!grid.isWall(x-dX,y+dY) && grid.isWall(x-dX,y)) || (!grid.isWall(x+dX,y-dY) && grid.isWall(x,y-dY)))
 				return next;
+		} else {
+			if(dX !== 0){
+				if((!grid.isWall(x+dX,y+1) && grid.isWall(x,y+1)) || (!grid.isWall(x+dX,y-1) && grid.isWall(x,y-1)))
+					return next;
+			}
+			if(dY !== 0){
+				if((!grid.isWall(x+1,y+dY) && grid.isWall(x+1,y)) || (!grid.isWall(x-1,y+dY) && grid.isWall(x-1,y)))
+					return next;
+			}
 		}
-		if(dX !== 0){
-			if((!grid.isWall(x+dX,y+1) && grid.isWall(x,y+1)) || (!grid.isWall(x+dX,y-1) && grid.isWall(x,y-1)))
-				return next;
+		if(dX !== 0 && dY !== 0){
+			/*const horizontal = this.jumpPath(grid.getNode(x+dX,y),next,end,grid);
+			if(horizontal) return horizontal;
+			const vertical = this.jumpPath(grid.getNode(x,y+dY),next,end,grid);
+			if(vertical) return vertical;*/
+			if(this.jumpPath(grid.getNode(x+dX,y),next,end,grid)) return next;
+			if(this.jumpPath(grid.getNode(x,y+dY),next,end,grid)) return next;
 		}
-		if(dY !== 0){
-			if((!grid.isWall(x+1,y+dY) && grid.isWall(x+1,y)) || (!grid.isWall(x-1,y+dY) && grid.isWall(x-1,y)))
-				return next;
-		}
-		return this.jumpPath(next,dX,dY,end,grid);
+		if(!grid.isWall(x+dX,y) || !grid.isWall(x,y+dY))
+			return this.jumpPath(grid.getNode(x+dX,y+dY),next,end,grid);
 	}
 	move(obstacles,you,width,height){
 		if(this.attackTime > game.scene.time) return;
