@@ -56,48 +56,16 @@ class Enemy{
 		this.path = [];
 		let it = 0;
 		while(node){
-			let point = {}
-			let r1 = node.parent;
-			let r2 = node;
-			let r;	
-			if(!r1){
-				point.x = r2.x;
-				point.y = r2.y;
-			} else {
-				if(collide({x:r1.x,y:r1.y-1,width:r1.width,height:r1.height},r2)){
-					r = r1.width > r2.width?r2:r1;
-					point.x = r.x + r.width/2;
-					point.y = r.y + ((r === r2)?r.height:0);
-					point.y-=2;
-				}
-				else if(collide({x:r1.x,y:r1.y+1,width:r1.width,height:r1.height},r2)){
-					r = r1.width > r2.width?r2:r1;
-					point.x = r.x + r.width/2;
-					point.y = r.y + ((r === r1)?r.height:0);
-				}
-				else if(collide({x:r1.x-1,y:r1.y,width:r1.width,height:r1.height},r2)){
-					r = r1.height > r2.height?r2:r1;
-					point.x = r.x + ((r === r2)?r.width:0);
-					point.y = r.y+r.height/2;
-					point.x-=2;
-				}
-				else if(collide({x:r1.x+1,y:r1.y,width:r1.width,height:r1.height},r2)){
-					r = r1.height > r2.height?r2:r1;
-					point.x = r.x + ((r === r1)?r.width:0);
-					point.y = r.y+r.height/2;
-				}
-			}
-			this.path.push(new Obstacle(point.x, point.y, 1, 1));
+			this.path.push(new Obstacle(node.x * node.width, node.y * node.height, 5, 5));
 			node = node.parent;
-			it++;
 		}
 		this.path.pop();
 		console.log(this.path.length)
 	}
-	setPath(width,height,obstacles,you,collide,tiles){
+	setPath(width,height,obstacles,you,collide){
 		//if(game.scene.time > 1) return;
 		if(!game.scene.AI_DEBUG) return;
-		/*let col = 50;
+		let col = 50;
 		let row = 50;
 		let unitWidth = width/col;
 		let unitHeight = height/row;
@@ -120,19 +88,12 @@ class Enemy{
 			for(let y = 0; y < grid[x].length; y++){
 				grid[x][y].findNeighbors(grid);
 			}
-		}*/
-		let start;
-		let end;
-		tiles.forEach(tile=>{
-			if(collide({x:this.x,y:this.y,width:1,height:1},tile)){
-				start = tile;
-			}
-			if(collide({x:you.x,y:you.y,width:1,height:1},tile)){
-				end = tile;
-			}
-		});
+		}
+		let start = grid[Math.floor(this.x/unitWidth)][Math.floor(this.y/unitHeight)];
+		let end = grid[Math.floor(you.x/unitWidth)][Math.floor(you.y/unitHeight)];
+
 		let openSet = [start];
-		let closedSet = [];
+		let closedSet = new Set();
 		let dist = this.dist;
 		end.wall = false;
 		while(openSet.length > 0){
@@ -148,19 +109,18 @@ class Enemy{
 				return current;
 			}
 			openSet = openSet.filter(i=>i!=current);
-			closedSet.push(current);
+			closedSet.add(`${current.x},${current.y}`);
 			for(let i = 0; i < current.neighbors.length;i++){
 				let neighbor = current.neighbors[i];
-				if(closedSet.includes(neighbor) || neighbor.wall)
+				if(closedSet.has(`${neighbor.x},${neighbor.y}`) || neighbor.wall)
 					continue;
 				//let nonDiagonal = current.x == neighbor.x || current.y == neighbor.y;
 				let tempG = current.g === undefined?0:current.g;
 				tempG += dist(current.x,current.y,neighbor.x,neighbor.y);
+				if(tempG >= neighbor.g)
+					continue;
 				if(!openSet.includes(neighbor)){
 					openSet.push(neighbor);
-				} else {
-					if(tempG >= neighbor.g)
-						continue;
 				}
 				neighbor.parent = current;
 				neighbor.g = tempG;

@@ -39,37 +39,22 @@ class AstarNode{
 		this.neighbors = [];
 	}
 	clone(){
-		let clone = new AstarNode(this.x,this.y,this.width,this.height);
-		clone.wall = this.wall;
-		return clone;
+		return new AstarNode(this.x,this.y,this.width,this.height,this.wall);
 	}
-	findNeighbors(list,collide){
-		list.forEach(node=>{
-			if(collide({x:this.x-1,y:this.y,width:this.width,height:this.height},node)){
-				if(!this.neighbors.includes(node)) this.neighbors.push(node);
-			}
-			if(collide({x:this.x,y:this.y-1,width:this.width,height:this.height},node)){
-				if(!this.neighbors.includes(node)) this.neighbors.push(node);
-			}
-			if(collide({x:this.x+1,y:this.y,width:this.width,height:this.height},node)){
-				if(!this.neighbors.includes(node)) this.neighbors.push(node);
-			}
-			if(collide({x:this.x,y:this.y+1,width:this.width,height:this.height},node)){
-				if(!this.neighbors.includes(node)) this.neighbors.push(node);
-			}
-			/*if(collide({x:this.x+1,y:this.y-1,width:this.width,height:this.height},node)){
-				if(!this.neighbors.includes(node)) this.neighbors.push(node);
-			}
-			if(collide({x:this.x+1,y:this.y+1,width:this.width,height:this.height},node)){
-				if(!this.neighbors.includes(node)) this.neighbors.push(node);
-			}
-			if(collide({x:this.x-1,y:this.y-1,width:this.width,height:this.height},node)){
-				if(!this.neighbors.includes(node)) this.neighbors.push(node);
-			}
-			if(collide({x:this.x,y:this.y+1,width:this.width,height:this.height},node)){
-				if(!this.neighbors.includes(node)) this.neighbors.push(node);
-			}*/
-		});
+	findNeighbors(grid){
+		let x = this.x;
+		let y = this.y;
+		let col = grid.length;
+		let row = grid[0].length;
+		if(x > 0) this.neighbors.push(grid[x-1][y]);
+		if(y > 0) this.neighbors.push(grid[x][y-1]);
+		if(x < col-1) this.neighbors.push(grid[x+1][y]);
+		if(y < row-1) this.neighbors.push(grid[x][y+1]);
+		if(x < col-1 && y > 0) this.neighbors.push(grid[x+1][y-1]);
+		if(x < col-1 && y < row-1) this.neighbors.push(grid[x+1][y+1]);
+		if(x > 0 && y > 0) this.neighbors.push(grid[x-1][y-1]);
+		if(x > 0 && y < row-1) this.neighbors.push(grid[x-1][y+1]);
+
 	}
 	getArea(){
 		return this.width*this.height;
@@ -90,15 +75,15 @@ class Scene{
 		this.spawners = [];
 		this.keys = [];
 		this.time = 0;
-		this.AI_DEBUG = false;
+		this.AI_DEBUG = true;
 		this.HIT_DEBUG = false;
 		this.gridLines = [];
 		this.initMap();
-		this.tileCutter = new TileCutter(this.width,this.height,this.obstacles);
+		/*this.tileCutter = new TileCutter(this.width,this.height,this.obstacles);
 		this.tileCutter.calcOutlines();
 		this.tileCutter.tiles.forEach(tile=>{
 			tile.findNeighbors(this.tileCutter.tiles,this.collide);
-		});
+		});*/
 		this.bg = new Background(0,0,width,height,this.sprites.bg);
 		for(let i = 0; i < width/50;i++){
 			this.gridLines.push(new Obstacle(i * (width/50),0,1,width));
@@ -127,16 +112,8 @@ class Scene{
 			return hitField.active;
 		});
 		this.enemies.forEach(enemy=>{
-			if(enemy.needsPath){
-				let tiles = [];
-				this.tileCutter.tiles.forEach(tile=>{
-					tiles.push(tile.clone());
-				});
-				tiles.forEach(tile=>{
-					tile.findNeighbors(tiles,this.collide);
-				});
-				enemy.setPath(this.width,this.height,this.obstacles,this.you,this.collide,tiles);
-			}
+			if(enemy.needsPath)
+				enemy.setPath(this.width,this.height,this.obstacles,this.you,this.collide,this.grid);
 			enemy.setDirection(this.you,this.collide);
 			enemy.move(this.obstacles,this.you,this.width,this.height);
 		});
@@ -268,7 +245,7 @@ class Scene{
 
 		if(this.AI_DEBUG){
 			ctx.strokeStyle = 'white';
-			this.tileCutter.tiles.forEach(line=>{
+			this.gridLines.forEach(line=>{
 				let adjusted = this.cameraOffset(line);
 				if(adjusted) ctx.strokeRect(adjusted.x,adjusted.y,line.width,line.height);
 			});
