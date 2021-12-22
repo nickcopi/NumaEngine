@@ -152,14 +152,14 @@ class Enemy extends Obstacle{
 					neighbors.push(grid.getNode(x-1,y+dY));
 			} else {
 				if(!grid.isWall(x+dX,y))
-					neighbors.push(grid.getNode(x,y+dY));
+					neighbors.push(grid.getNode(x+dX,y));
 				if(grid.isWall(x,y+1))
 					neighbors.push(grid.getNode(x+dX,y+1));
 				if(grid.isWall(x,y-1))
 					neighbors.push(grid.getNode(x+dX,y-1));
 			}
 		}
-		return neighbors;
+		return neighbors.filter(Boolean);
 	}
 	findSuccessors(current,end,grid){
 		const successors = [];
