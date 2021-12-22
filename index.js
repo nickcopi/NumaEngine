@@ -77,7 +77,9 @@ class Scene{
 		this.time = 0;
 		this.AI_DEBUG = true;
 		this.HIT_DEBUG = false;
+		this.gridSize = 100;
 		this.gridLines = [];
+		this.astarGrid = new AstarGrid(this.gridSize);
 		this.initMap();
 		/*this.tileCutter = new TileCutter(this.width,this.height,this.obstacles);
 		this.tileCutter.calcOutlines();
@@ -85,11 +87,11 @@ class Scene{
 			tile.findNeighbors(this.tileCutter.tiles,this.collide);
 		});*/
 		this.bg = new Background(0,0,width,height,this.sprites.bg);
-		for(let i = 0; i < width/50;i++){
-			this.gridLines.push(new Obstacle(i * (width/50),0,1,width));
+		for(let i = 0; i < this.gridSize;i++){
+			this.gridLines.push(new Obstacle(i * (width/this.gridSize),0,1,width));
 		}
-		for(let i = 0; i < height/50;i++){
-			this.gridLines.push(new Obstacle(0,i * (height/50),height,1));
+		for(let i = 0; i < this.gridSize;i++){
+			this.gridLines.push(new Obstacle(0,i * (height/this.gridSize),height,1));
 		}
 		this.you = new You(youX,youY,this.sprites.you);
 		this.interval = setInterval(()=>{
@@ -113,7 +115,7 @@ class Scene{
 		});
 		this.enemies.forEach(enemy=>{
 			if(enemy.needsPath)
-				enemy.setPath(this.width,this.height,this.obstacles,this.you,this.collide,this.grid);
+				enemy.setPath(this.you,this.astarGrid);
 			enemy.setDirection(this.you,this.collide);
 			enemy.move(this.obstacles,this.you,this.width,this.height);
 		});
@@ -128,7 +130,9 @@ class Scene{
 		this.obstacles.push(new Obstacle(600,20,200,200));
 		this.obstacles.push(new Obstacle(100,240,700,50));
 		this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
+		//this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
 		//this.spawners.push(new Spawner(0,10,600));
+		this.astarGrid.initGrid(this.width,this.height,this.obstacles,this.collide);
 	}
 	fadeFaders(){
 		this.faders = this.faders.filter(fader=>{

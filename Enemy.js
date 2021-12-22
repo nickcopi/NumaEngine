@@ -57,44 +57,23 @@ class Enemy{
 		let it = 0;
 		while(node){
 			this.path.push(new Obstacle(node.x * node.width, node.y * node.height, 5, 5));
+			const oldNode = node;
 			node = node.parent;
+			oldNode.parent = undefined;
 		}
 		this.path.pop();
 		console.log(this.path.length)
 	}
-	setPath(width,height,obstacles,you,collide){
+	setPath(you,grid){
 		//if(game.scene.time > 1) return;
 		if(!game.scene.AI_DEBUG) return;
-		let col = 50;
-		let row = 50;
-		let unitWidth = width/col;
-		let unitHeight = height/row;
-		let grid = new Array(col);
-		for(let i = 0;i < grid.length; i++){
-			grid[i] = new Array(row);
-		}
-		for(let x = 0; x < grid.length; x++){
-			for(let y = 0; y < grid[x].length; y++){
-				grid[x][y] = new AstarNode(x,y,unitWidth,unitHeight);
-				for(let i = 0; i < obstacles.length; i++){
-					let fakeNode = {x:x*unitWidth,y:y*unitHeight,width:unitWidth,height:unitHeight};
-					if(collide(fakeNode,obstacles[i])){
-						grid[x][y].wall = true;
-					} 
-				}
-			}
-		}
-		for(let x = 0; x < grid.length; x++){
-			for(let y = 0; y < grid[x].length; y++){
-				grid[x][y].findNeighbors(grid);
-			}
-		}
-		let start = grid[Math.floor(this.x/unitWidth)][Math.floor(this.y/unitHeight)];
-		let end = grid[Math.floor(you.x/unitWidth)][Math.floor(you.y/unitHeight)];
-
+		let start = grid.getPos(this.x,this.y);
+		let end = grid.getPos(you.x,you.y);
+		grid.clear();
 		let openSet = [start];
 		let closedSet = new Set();
 		let dist = this.dist;
+		const oldEndWall = end.wall;
 		end.wall = false;
 		while(openSet.length > 0){
 			let winner = 0;
@@ -105,6 +84,7 @@ class Enemy{
 			});
 			let current = openSet[winner];
 			if(current === end) {
+				end.wall = oldEndWall;
 				this.loadPath(current);
 				return current;
 			}
@@ -128,6 +108,7 @@ class Enemy{
 				//console.log(tempG)
 			}
 		}
+		end.wall = oldEndWall;
 	}
 	move(obstacles,you,width,height){
 		if(this.attackTime > game.scene.time) return;
