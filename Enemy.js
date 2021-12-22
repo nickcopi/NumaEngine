@@ -17,6 +17,7 @@ class Enemy{
 		this.attackTime = 0;
 		this.attackSpeed = 60;
 		this.slowed = 0;
+		this.maxPathDistance = 750;
 	}
 	attack(time,hitFields){
 		if(this.attackTime > time) return;
@@ -67,8 +68,9 @@ class Enemy{
 	setPath(you,grid){
 		//if(game.scene.time > 1) return;
 		if(!game.scene.AI_DEBUG) return;
-		let start = grid.getPos(this.x,this.y);
-		let end = grid.getPos(you.x,you.y);
+		if(this.dist(you.x,you.y,this.x,this.y) > this.maxPathDistance) return;
+		let start = grid.getPos(this.x+this.width/2,this.y+this.height/2);
+		let end = grid.getPos(you.x+you.width/2,you.y+you.height/2);
 		grid.clear();
 		let openSet = [start];
 		let closedSet = new Set();
@@ -92,7 +94,7 @@ class Enemy{
 			closedSet.add(`${current.x},${current.y}`);
 			for(let i = 0; i < current.neighbors.length;i++){
 				let neighbor = current.neighbors[i];
-				if(closedSet.has(`${neighbor.x},${neighbor.y}`) || neighbor.wall)
+				if(closedSet.has(`${neighbor.x},${neighbor.y}`) || neighbor.wall || grid.getDistance(start,current) > this.maxPathDistance)
 					continue;
 				//let nonDiagonal = current.x == neighbor.x || current.y == neighbor.y;
 				let tempG = current.g === undefined?0:current.g;
