@@ -15,6 +15,7 @@ class Enemy extends Obstacle{
 		this.attackSpeed = 60;
 		this.slowed = 0;
 		this.maxPathDistance = 750;
+		this.repathTime = 0;
 	}
 	attack(time,hitFields){
 		if(this.attackTime > time) return;
@@ -65,6 +66,12 @@ class Enemy extends Obstacle{
 	}
 	clearNodes(list){
 		list.forEach(node=>node.reset());
+	}
+	checkRepath(time){
+		if(time > this.repathTime + 15) {
+			this.needsPath = true;
+			this.repathTime = time;
+		}
 	}
 	setPath(you,grid){
 		//if(game.scene.time > 1) return;
@@ -164,14 +171,7 @@ class Enemy extends Obstacle{
 	findSuccessors(current,end,grid){
 		const successors = [];
 		this.findNeighbors(current,grid).forEach(neighbor=>{
-			let dX = neighbor.x - current.x;
-			if(dX < -1) dX = -1;
-			if(dX > 1) dX = 1;
-			let dY = neighbor.y - current.y;
-			if(dY < -1) dY = -1;
-			if(dY > 1) dY = 1;
-			const next = grid.getNode(neighbor.x + dX, neighbor.y + dY);
-			const jumpPoint = this.jumpPath(next,neighbor,end,grid);
+			const jumpPoint = this.jumpPath(neighbor,current,end,grid);
 			if(jumpPoint) successors.push(jumpPoint);
 		});
 		return successors;
