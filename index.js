@@ -76,6 +76,7 @@ class Scene{
 		this.height = height;
 		this.bullets = [];
 		this.obstacles = [];
+		this.pickups = [];
 		this.enemies = [];
 		this.faders = [];
 		this.hitFields = [];
@@ -116,6 +117,13 @@ class Scene{
 		this.bullets.forEach(bullet=>{
 			bullet.move();
 		});
+		this.pickups = this.pickups.filter(pickup=>{
+			if(this.collide(this.you,pickup)){
+				pickup.use(this.you);
+				return false;
+			}
+			return true;
+		});
 		this.hitFields = this.hitFields.filter(hitField=>{
 			hitField.hit(this.you,this.collide);
 			return hitField.active;
@@ -140,6 +148,7 @@ class Scene{
 		this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
 		//this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
 		this.spawners.push(new Spawner(0,10,600));
+		this.pickups.push(new Pickup(300,10,20,20));
 		this.astarGrid.initGrid(this.width,this.height,this.obstacles,this.collide);
 	}
 	fadeFaders(){
@@ -275,8 +284,14 @@ class Scene{
 		ctx.fillStyle = 'gray';
 		this.obstacles.forEach(obstacle=>{
 			let adjusted = this.cameraOffset(obstacle);
-			if(adjusted) ctx.fillRect(adjusted.x,adjusted.y,obstacle.width,obstacle.height);
+			if(adjusted) obstacle.render(ctx,adjusted);
 		});
+
+		ctx.fillStyle = 'gold';
+		this.pickups.forEach(pickup=>{
+			let adjusted = this.cameraOffset(pickup);
+			if(adjusted) pickup.render(ctx,adjusted);
+		})
 
 		/*Draw you*/
 		this.you.render(ctx,canvas);
@@ -319,21 +334,6 @@ class Scene{
 
 		});
 		ctx.globalAlpha = 1;
-	}
-}
-
-class Obstacle{
-	constructor(x,y,width,height){
-		this.x = x;
-		this.y = y;
-		this.width = width;
-		this.height = height;
-	}
-	getCenterX(){
-		return this.x + this.width/2;
-	}
-	getCenterY(){
-		return this.y + this.height/2;
 	}
 }
 
