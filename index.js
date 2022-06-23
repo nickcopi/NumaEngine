@@ -24,6 +24,7 @@ class Settings{
 		this.DOWN_KEY = 83;
 		this.LEFT_KEY = 65;
 		this.RIGHT_KEY = 68;
+		this.INTERACT_KEY = 32;
 	}
 }
 class AstarNode{
@@ -35,7 +36,7 @@ class AstarNode{
 		this.h = 0;
 		/*this.g = 0; // g is acquired score*/
 		this.f = 0;
-		this.wall = wall?true:false;
+		this.wall = !!wall;
 		this.neighbors = [];
 	}
 	clone(){
@@ -77,6 +78,7 @@ class Scene{
 		this.bullets = [];
 		this.obstacles = [];
 		this.pickups = [];
+		this.interactables = [];
 		this.enemies = [];
 		this.faders = [];
 		this.hitFields = [];
@@ -149,6 +151,7 @@ class Scene{
 		//this.enemies.push(new Enemy(0,10,20,20,100,2,20,this.sprites.enemy));
 		this.spawners.push(new Spawner(0,10,600));
 		this.pickups.push(new Pickup(300,10,20,20));
+		this.interactables.push(new Interactable(300,110,40,40));
 		this.astarGrid.initGrid(this.width,this.height,this.obstacles,this.collide);
 	}
 	fadeFaders(){
@@ -239,8 +242,19 @@ class Scene{
 		if(this.keys[this.settings.RIGHT_KEY]){
 			this.you.x += this.you.speed;
 		}
+		if(this.keys[this.settings.INTERACT_KEY]){
+			this.doInteract();
+		}
 		
 	}
+	doInteract(){
+		this.interactables.forEach(interactable=>{
+			if(this.collide(this.you,interactable)){
+				interactable.interact(this.time);
+			}
+		});
+	}
+
 	/*Creates a shifted x and y of things to be drawn based on you. Returns nothing if x and y are off map.*/
 	cameraOffset(obj){
 		let adjustedX = (obj.x - (this.you.x)) + canvas.width/2;
@@ -291,6 +305,11 @@ class Scene{
 		this.pickups.forEach(pickup=>{
 			let adjusted = this.cameraOffset(pickup);
 			if(adjusted) pickup.render(ctx,adjusted);
+		})
+		ctx.fillStyle = 'purple';
+		this.interactables.forEach(interactable=>{
+			let adjusted = this.cameraOffset(interactable);
+			if(adjusted) interactable.render(ctx,adjusted);
 		})
 
 		/*Draw you*/

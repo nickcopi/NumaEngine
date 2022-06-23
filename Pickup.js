@@ -6,7 +6,6 @@ class Pickup{
         this.height = height;
     }
     render(ctx,adjusted){
-        ctx.fillStyle = ''
         ctx.fillRect(adjusted.x,adjusted.y,this.width,this.height);
     }
     use(player){
